@@ -13,6 +13,7 @@ dependencies = [
 dev = [
     "basedpyright>=1.39.10",
     "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
     "ruff>=0.16.6",
 ]
 
@@ -31,5 +32,9 @@ select = ["E", "W", "F", "I", "UP", "B", "S", "N", "SIM", "RUF", "PGH"]
 [tool.basedpyright]
 pythonVersion = "3.13"
 typeCheckingMode = "strict"
-include = ["enricher"]
+include = ["enricher", "tests"]
 reportMissingTypeStubs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --cov=enricher --cov-report=term-missing:skip-covered --cov-report=json:coverage.json"

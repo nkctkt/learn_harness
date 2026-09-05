@@ -33,3 +33,7 @@ services/shortener/bin/
 # Claude Code local
 .claude/settings.local.json
 CLAUDE.local.md
+
+# Coverage outputs
+.coverage
+coverage.json
