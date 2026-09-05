@@ -69,10 +69,10 @@ forbidden_path() { # $1 = パス。置いてはいけないファイルなら 0
   return 1
 }
 
-block() { # $1 = 理由, stdin = 該当行
+block() { # $1 = 理由, $2 = 該当行(複数行)。パイプで呼ぶと exit がサブシェルに閉じるので引数で渡す
   {
     echo "guard-secrets: 拒否しました。$1"
-    cat
+    [ -n "${2:-}" ] && printf '%s\n' "$2"
     echo
     echo "対処: 値はコードに書かず環境変数(process.env / os.environ)から読む。設定例は .env.example にプレースホルダで書く。"
     echo "      誤検知なら、その行に 'allow-secret: <理由>' を付ける。ファイル名が原因なら .gitignore 済みか確認し、別の置き場所を使う。"
@@ -83,7 +83,7 @@ block() { # $1 = 理由, stdin = 該当行
 case "$tool" in
   Edit|Write|MultiEdit)
     path="$(printf '%s' "$input" | jq -r '.tool_input.file_path // empty')"
-    [ -n "$path" ] && forbidden_path "$path" && block "秘密情報を置くためのファイル名です: $path" </dev/null
+    [ -n "$path" ] && forbidden_path "$path" && block "秘密情報を置くためのファイル名です: $path"
     text="$(printf '%s' "$input" | jq -r '
       .tool_input as $t |
       ($t.content // empty),
@@ -91,24 +91,24 @@ case "$tool" in
       (($t.edits // [])[] | .new_string // empty)')"
     [ -z "$text" ] && exit 0
     if out="$(printf '%s\n' "$text" | scan_text "${path:-<input>}")"; then exit 0; fi
-    printf '%s\n' "$out" | block "書き込もうとした内容に秘密情報・個人情報らしき行があります。"
+    block "書き込もうとした内容に秘密情報・個人情報らしき行があります。" "$out"
     ;;
   Bash)
     cmd="$(printf '%s' "$input" | jq -r '.tool_input.command // empty')"
-    printf '%s' "$cmd" | grep -Eq '(^|[^[:alnum:]_-])git([[:space:]]+-[^[:space:]]+)*[[:space:]]+commit([[:space:]]|$)' || exit 0
+    printf '%s' "$cmd" | grep -Eq '(^|[^[:alnum:]_-])git[[:space:]]+([^;&|]*[[:space:]])?commit([[:space:]]|$)' || exit 0
     cd "$root" || exit 0
     git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
     # staged のファイル名を検査
     bad=""
     while IFS= read -r f; do [ -n "$f" ] && forbidden_path "$f" && bad="$bad$f"$'\n'; done < <(git diff --cached --name-only --diff-filter=ACMR)
-    [ -n "$bad" ] && printf '%s' "$bad" | block "秘密情報を置くためのファイルが staged されています。git rm --cached で外してください。"
+    [ -n "$bad" ] && block "秘密情報を置くためのファイルが staged されています。git rm --cached で外してください。" "${bad%$'\n'}"
     # 追加行だけを検査(削除行は対象外)。-a / --all のときは未 staged の変更も含める。
     diff_args=(--cached)
     printf '%s' "$cmd" | grep -Eq -- '(^|[[:space:]])(-a|--all|-am|-a[[:alpha:]]+|-[[:alpha:]]*a[[:alpha:]]*)([[:space:]]|$)' && diff_args=(HEAD)
     added="$(git diff "${diff_args[@]}" --unified=0 --no-color --diff-filter=ACMR | grep -E '^\+[^+]' | sed 's/^+//')"
     [ -z "$added" ] && exit 0
     if out="$(printf '%s\n' "$added" | scan_text "staged")"; then exit 0; fi
-    printf '%s\n' "$out" | block "コミットしようとしている差分に秘密情報・個人情報らしき行があります(git diff の追加行を検査)。"
+    block "コミットしようとしている差分に秘密情報・個人情報らしき行があります(git diff の追加行を検査)。" "$out"
     ;;
 esac
 exit 0

@@ -9,7 +9,7 @@
 使い捨てブランチ `exercise/00-baseline` に `apps/api/src/baseline-defects.ts` を追加した。
 
 ```ts
-const FAKE_AWS_KEY = "AKIAIOSFODNN7EXAMPLE"; // AWS 公式ドキュメントのサンプル鍵(無効)
+const FAKE_AWS_KEY = "AKIAIOSFODNN7EXAMPLE"; // allow-secret: AWS 公式ドキュメントのサンプル鍵(無効)
 export const untyped: any = JSON.parse("{}");
 export const count: number = "not a number";
 export function unused() { return FAKE_AWS_KEY }
