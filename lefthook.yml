@@ -1,0 +1,26 @@
+# git hooks(人間の commit にも効く層)。Claude Code の hooks は Agent のツール呼び出しにしか反応しないので、
+# `git commit` を直接打つ経路はここで受ける。--no-verify で回避できるため、最終防衛線は CI と push protection。
+#
+# 方針: pre-commit は数秒で終わるものだけ(staged ファイルの format/lint と secret scan)。
+#       テスト・型情報 lint・全体検査は Stop hook と CI に任せる。
+pre-commit:
+  parallel: true
+  jobs:
+    - name: secrets (gitleaks, staged)
+      run: |
+        if command -v gitleaks >/dev/null 2>&1; then
+          gitleaks git --pre-commit --staged --redact --no-banner --exit-code 1 .
+        else
+          echo "gitleaks が未導入のため skip(brew install gitleaks)。CI では必ず実行される。"
+        fi
+    - name: verify (staged files)
+      glob: "*.{ts,tsx,js,jsx,mjs,cjs,json,jsonc,css,py}"
+      run: scripts/verify.sh --files {staged_files}
+      # --fix は使わない。commit 時に内容が変わると staged と作業ツリーが食い違うため、失敗させて直させる。
+
+commit-msg:
+  jobs:
+    - name: conventional commit subject
+      run: |
+        head -n1 "{1}" | grep -Eq '^(Merge|Revert|feat|fix|docs|build|ci|chore|refactor|test|perf|exercise)(\([a-z0-9/_.-]+\))?!?: .+' \
+          || { echo "commit subject は Conventional Commits 形式にしてください: type(scope): summary" >&2; exit 1; }
