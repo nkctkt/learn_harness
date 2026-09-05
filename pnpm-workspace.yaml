@@ -6,3 +6,6 @@ packages:
 # esbuild の postinstall はバイナリ検証のみで、optionalDependencies 経由で動作するため false(実行しない)。
 allowBuilds:
   esbuild: false
+
+# 依存は完全固定で記録する(^ / ~ を付けない)。pnpm 11 では .npmrc ではなくここに書く。
+saveExact: true
