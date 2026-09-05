@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isPublicHost, normalizeUrl } from "./url";
+import { isPublicHost, normalizeUrl } from "./url.js";
 
 describe("normalizeUrl", () => {
   it("lowercases the host and drops the fragment", () => {

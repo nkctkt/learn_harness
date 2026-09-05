@@ -7,12 +7,7 @@ import { z } from "zod";
  * - host は大文字小文字を区別しないので小文字にする
  * 公開ホストかどうか(SSRF 対策)は enricher が取得する直前にも再検証する(Phase 3)。
  */
-const urlSchema = z
-  .string()
-  .trim()
-  .min(1, "url is required")
-  .max(2048, "url is too long")
-  .url();
+const urlSchema = z.string().trim().min(1, "url is required").max(2048, "url is too long").url();
 
 export type NormalizedUrl = { href: string; host: string };
 
@@ -39,6 +34,7 @@ const PRIVATE_V4 = [
 export function isPublicHost(host: string): boolean {
   const h = host.replace(/^\[|\]$/g, "").toLowerCase();
   if (h === "localhost" || h.endsWith(".localhost") || h.endsWith(".internal")) return false;
-  if (h === "::1" || h.startsWith("fe80:") || h.startsWith("fc") || h.startsWith("fd")) return false;
+  if (h === "::1" || h.startsWith("fe80:") || h.startsWith("fc") || h.startsWith("fd"))
+    return false;
   return !PRIVATE_V4.some((re) => re.test(h));
 }
