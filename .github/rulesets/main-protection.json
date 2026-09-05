@@ -4,9 +4,7 @@
   "enforcement": "active",
   "conditions": {
     "ref_name": {
-      "include": [
-        "~DEFAULT_BRANCH"
-      ],
+      "include": ["~DEFAULT_BRANCH"],
       "exclude": []
     }
   },
@@ -35,10 +33,7 @@
         "require_code_owner_review": true,
         "require_last_push_approval": false,
         "required_review_thread_resolution": true,
-        "allowed_merge_methods": [
-          "squash",
-          "merge"
-        ]
+        "allowed_merge_methods": ["squash", "merge"]
       }
     }
   ]

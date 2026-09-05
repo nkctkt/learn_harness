@@ -8,3 +8,28 @@ dependencies = [
     "httpx>=0.28.1",
     "uvicorn[standard]>=0.52.4",
 ]
+
+[dependency-groups]
+dev = [
+    "basedpyright>=1.39.10",
+    "pytest>=9.1.1",
+    "ruff>=0.16.6",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+# E/W: pycodestyle, F: pyflakes, I: isort, UP: pyupgrade, B: bugbear, S: bandit(セキュリティ),
+# N: naming, SIM: simplify, RUF: ruff 固有, PGH: type: ignore に理由必須
+select = ["E", "W", "F", "I", "UP", "B", "S", "N", "SIM", "RUF", "PGH"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]  # テストでの assert は許可
+
+[tool.basedpyright]
+pythonVersion = "3.13"
+typeCheckingMode = "strict"
+include = ["enricher"]
+reportMissingTypeStubs = false
