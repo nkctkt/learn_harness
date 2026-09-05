@@ -29,6 +29,8 @@ for proj in "${PROJECTS[@]}"; do
     step "ruff check ($proj)" uv run --quiet ruff check "${pf[@]}"
   fi
   step "basedpyright ($proj)" uv run --quiet basedpyright
+  # pytest は pyproject の addopts でカバレッジを常に出す(数十 ms)。--files(単一ファイル編集)では走らせない。
+  [ "${VERIFY_MODE}" != files ] && step "pytest ($proj)" uv run --quiet pytest
   popd >/dev/null
 done
 exit $STEP_FAILED

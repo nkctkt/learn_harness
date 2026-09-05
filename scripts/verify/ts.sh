@@ -13,6 +13,8 @@ if [ $# -eq 0 ]; then
   step "tsc (all packages)" pnpm -r --workspace-concurrency=4 typecheck
   # 型情報 lint は全体の型解決が必要で遅いため、全体モード(CI / Stop hook)でのみ実行する
   step "eslint (type-aware rules only)" pnpm exec eslint .
+  # テストは全体モードではカバレッジ付きで実行する(json-summary を CI の job summary に使う)。閾値では落とさない。
+  step "vitest (all packages, coverage)" pnpm -r --workspace-concurrency=4 test:coverage
   exit $STEP_FAILED
 fi
 
@@ -24,6 +26,9 @@ else step "biome check (${#files[@]} files)" pnpm exec biome check "${files[@]}"
 
 pkgs=(); while IFS= read -r _l; do pkgs+=("$_l"); done < <(for f in "${files[@]}"; do [[ "$f" =~ ^((apps|packages)/[^/]+)/.*\.(ts|tsx)$ ]] && echo "${BASH_REMATCH[1]}"; done | sort -u)
 for p in "${pkgs[@]+"${pkgs[@]}"}"; do
-  [ -f "$p/package.json" ] && step "tsc ($p)" pnpm --dir "$p" typecheck
+  [ -f "$p/package.json" ] || continue
+  step "tsc ($p)" pnpm --dir "$p" typecheck
+  # 差分モードでは変更パッケージのテストだけを走らせる(カバレッジ無し。速度優先)。
+  [ "${VERIFY_MODE}" = changed ] && step "vitest ($p)" pnpm --dir "$p" test
 done
 exit $STEP_FAILED
