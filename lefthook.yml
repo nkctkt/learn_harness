@@ -3,6 +3,10 @@
 #
 # 方針: pre-commit は数秒で終わるものだけ(staged ファイルの format/lint と secret scan)。
 #       テスト・型情報 lint・全体検査は Stop hook と CI に任せる。
+output:
+  - summary
+  - failure
+
 pre-commit:
   parallel: true
   jobs:
