@@ -1,0 +1,8 @@
+packages:
+  - apps/*
+  - packages/*
+
+# pnpm 11 は依存の install スクリプトを既定で実行せず、判断を allowBuilds に明記させる(供給網対策)。
+# esbuild の postinstall はバイナリ検証のみで、optionalDependencies 経由で動作するため false(実行しない)。
+allowBuilds:
+  esbuild: false
