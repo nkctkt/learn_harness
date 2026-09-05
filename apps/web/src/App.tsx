@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-
-type Health = { status: string; service: string };
+import { type Health, healthLabel } from "./lib/healthLabel";
 
 export function App() {
   const [health, setHealth] = useState<Health | null>(null);
@@ -16,7 +15,7 @@ export function App() {
   return (
     <main>
       <h1>Reading Shelf</h1>
-      <p>api: {error ?? (health ? `${health.status} (${health.service})` : "loading…")}</p>
+      <p>api: {healthLabel(health, error)}</p>
     </main>
   );
 }

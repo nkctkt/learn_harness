@@ -1,0 +1,10 @@
+# gitleaks の設定。既定ルールを継承し、教育用のダミー値だけを行内マーカーで許可する。
+# 許可の書き方は .claude/hooks/guard-secrets.sh と同じ「その行に allow-secret: <理由>」に統一する。
+[extend]
+useDefault = true
+
+[allowlist]
+description = "教育用に明示された値のみ許可"
+regexTarget = "line"
+regexes = ['''allow-secret:''']
+paths = ['''pnpm-lock\.yaml$''', '''uv\.lock$''']

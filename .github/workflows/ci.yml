@@ -1,4 +1,4 @@
-# CI Phase 1: 静的ゲート(format / lint / typecheck)。
+# CI Phase 2: 静的ゲート(format / lint / typecheck)+ unit test + coverage(報告のみ)+ secret scan。
 # hooks と同じ scripts/verify.sh を「全体」に対して実行する。ローカルで回避されていないことの保証が目的。
 # 変更されたパスに応じて言語ごとの job を skip する。skip された job は required check では成功扱いになる。
 name: CI
@@ -61,6 +61,17 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: scripts/verify.sh --only ts
+      - name: coverage summary (report only, never a gate)
+        if: always()
+        run: |
+          {
+            echo "### Coverage (ts)"; echo; echo "| package | lines | branches | functions |"; echo "|---|---|---|---|"
+            for f in apps/*/coverage/coverage-summary.json packages/*/coverage/coverage-summary.json; do
+              [ -f "$f" ] || continue
+              pkg="$(dirname "$(dirname "$f")")"
+              jq -r --arg p "$pkg" '.total | "| \($p) | \(.lines.pct)% | \(.branches.pct)% | \(.functions.pct)% |"' "$f"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
 
   py:
     name: py / ruff + basedpyright
@@ -77,13 +88,35 @@ jobs:
       - run: uv sync --locked --all-groups
         working-directory: services/enricher
       - run: scripts/verify.sh --only py
+      - name: coverage summary (report only, never a gate)
+        if: always()
+        run: |
+          f=services/enricher/coverage.json
+          [ -f "$f" ] && {
+            echo "### Coverage (py)"; echo
+            jq -r '.totals | "services/enricher: lines \(.percent_covered_display)% (\(.covered_lines)/\(.num_statements))"' "$f"
+          } >> "$GITHUB_STEP_SUMMARY" || true
+
+  secrets:
+    name: secrets / gitleaks (full history)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0 # 履歴全体を見る。pre-commit(staged のみ)と役割が違う
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+          GITLEAKS_ENABLE_SUMMARY: "true"
 
   # Rulesets の required check にはこの 1 つだけを登録する。
   # 言語 job が増減しても ruleset を触らずに済み、skip された job も正しく成功扱いになる。
   ci-ok:
     name: ci-ok
     if: always()
-    needs: [changes, ts, py]
+    needs: [changes, ts, py, secrets]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:

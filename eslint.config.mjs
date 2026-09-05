@@ -13,6 +13,7 @@ export default tseslint.config(
       "services/**",
       "eslint.config.mjs",
       "**/vite.config.ts",
+      "**/vitest.config.ts",
     ],
   },
   {
