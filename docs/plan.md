@@ -37,6 +37,8 @@
 
 Hook = Claude Code の PostToolUse/Stop、pre-commit = git hook、CI = PR 時、Nightly = scheduled。
 
+Hook 層の secret scan は依存ゼロの自前スクリプト(`.claude/hooks/guard-secrets.sh`)で行う。PreToolUse なので gitleaks と違い **書き込む前に** 止められる。既知パターンしか見ないので、pre-commit / CI / サーバ側の gitleaks・push protection を代替しない(Phase 2 で lefthook と共に導入)。
+
 | ゲート | ツール | Hook | pre-commit | CI | Nightly | Merge block | コスト | 優先度 |
 |---|---|---|---|---|---|---|---|---|
 | Format | Biome / Ruff / gofmt | 編集ファイルを自動整形 | staged | check | - | Yes | 秒 | 最高 |
@@ -44,7 +46,7 @@ Hook = Claude Code の PostToolUse/Stop、pre-commit = git hook、CI = PR 時、
 | 型情報 lint | typescript-eslint(type-aware) | - | - | 全体 | - | Yes | 分 | 高 |
 | Type check | tsc / basedpyright / go build | 編集パッケージ | 任意 | 全体 | - | Yes | 数十秒 | 最高 |
 | Unit test | Vitest / pytest / go test | 関連テスト | - | 全体 | - | Yes | 分 | 最高 |
-| Secret scan | gitleaks + GitHub push protection | 編集ファイル | staged(最重要) | 全履歴 | - | Yes | 秒 | 最高 |
+| Secret scan | 自前 grep(hook)/ gitleaks(pre-commit・CI)/ GitHub push protection | 書込前 block + commit 前 block | staged(最重要) | 全履歴 | - | Yes | 秒 | 最高 |
 | SCA | Trivy / dependency-review / Dependabot | - | - | lockfile 変更時 | 毎日 | High 以上 | 秒 | 高 |
 | Build | vite build / docker build | - | - | 全体 | - | Yes | 分 | 高 |
 | Integration | Testcontainers + Postgres | - | - | 全体 | - | Yes | 分 | 高 |
@@ -96,8 +98,8 @@ infra/terraform  validate + scan のみ。apply しない → IaC scan 教材
 |---|---|---|---|
 | Monorepo | pnpm workspaces(追加ツール無し) | Turborepo / Nx | まず Actions の path filter で affected を手作りし、必要になれば Turbo |
 | TS format/lint(hook 層) | Biome | Prettier + ESLint | 速度と autofix。調査 13.2 の推奨 |
-| TS 型情報 lint(CI 層) | typescript-eslint(type-aware ルールのみ) | - | Biome では検出できないもの(floating promise 等)を層差として体験 |
-| TS 型 | tsc `strict` + `noUncheckedIndexedAccess` | - | - |
+| TS 型情報 lint(CI 層) | typescript-eslint(type-aware ルールのみ) | - | Biome では検出できないもの(floating promise 等)を層差として体験。Exercise 01 で実証済み |
+| TS 型 | tsc `strict` + `noUncheckedIndexedAccess`、**TypeScript 6.0.x に固定** | tsgo(TS 7) | typescript-eslint が TS 7 未対応(2026-09)。対応後に tsgo へ移行を検討 |
 | TS test | Vitest + Testcontainers | Jest | - |
 | TS arch / dead code | dependency-cruiser / knip | eslint-plugin-boundaries / ts-prune | - |
 | Frontend | React + Vite + TanStack Query | Next.js | SSR 固有の複雑さを排除 |
@@ -210,7 +212,8 @@ Phase 1〜4 が本質。ここまでで 7 割の価値が出る。
 - PoC の自己矛盾を教材化する: `guard-bash.sh` が `curl | sh` を deny するのに `ci.yml` が `curl | sh` でツール導入、Actions の SHA 未固定、`post-edit-check.sh` の tsc 全体実行。
 - 調査が再確認を求める事項を実機で確認する: Biome の型情報 lint の範囲、Stop hook の 8 回上限、PostToolUse の block 不可、gitleaks の保守状況。
 - 依存追加の全面 deny は 1 人の学習環境では DX コストが高い。仕組みは実装して体験し、常時有効化は Phase 4 で判断。
-- Repository は public を推奨。private では CodeQL / push protection / dependency review に GHAS が必要。本物の秘密情報は置かない。
+- Repository は **public**(`nkctkt/learn_harness`、2026-09-05 決定)。個人・組織とも GitHub Free のため、private では Rulesets / required checks 自体が使えず L6 が成立しない。CodeQL / push protection / dependency review も private では GHAS が必要。本物の秘密情報は置かない。
+- 単独メンテナのため Rulesets の required approvals は 0。1 にすると全 merge が admin bypass になり、bypass が常態化する方が害が大きい。サーバ強制の実体は required status check(`ci-ok`)。テンプレート向けには approvals ≥ 1 を推奨値として docs に残す。
 
 ## 9. 最終成果物
 
@@ -221,7 +224,12 @@ Phase 1〜4 が本質。ここまでで 7 割の価値が出る。
 - Documentation: `docs/quality-engineering.md`, `docs/harness-architecture.md`, `docs/ci-design.md`, `docs/security.md`, `docs/exercises/*`
 - Reusable Harness: `templates/`(copier 化)
 
-## 10. 環境メモ(2026-09-05 時点)
+## 10. 既知のハーネスの穴(発見順に追記)
+
+- PostToolUse hook は `Edit|Write` ツールにしか反応しない。Bash の heredoc でファイルを書くと素通りする(Exercise 01 で発生)。Stop hook の `verify.sh --changed`(Phase 2)が受け止める設計にする。
+- Hook は `.claude/settings.json` を編集すれば無効化できる。保護は Phase 3 の guard hook + CODEOWNERS。
+
+## 11. 環境メモ(2026-09-05 時点)
 
 - あり: node 24, pnpm 11, uv 0.6, python 3.13, docker 27, terraform 1.14
 - なし(Phase 到達時に導入): go, gh, gitleaks, trivy, biome(pnpm 経由)

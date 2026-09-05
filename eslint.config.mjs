@@ -4,7 +4,17 @@
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["**/dist/**", "**/coverage/**", "**/node_modules/**", "**/.venv/**", "services/**", "eslint.config.mjs", "**/vite.config.ts"] },
+  {
+    ignores: [
+      "**/dist/**",
+      "**/coverage/**",
+      "**/node_modules/**",
+      "**/.venv/**",
+      "services/**",
+      "eslint.config.mjs",
+      "**/vite.config.ts",
+    ],
+  },
   {
     files: ["apps/**/*.{ts,tsx}", "packages/**/*.{ts,tsx}"],
     languageOptions: {
