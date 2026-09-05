@@ -1,0 +1,9 @@
+# ハーネス自体(CI / Claude 設定 / ポリシー / IaC)の変更はオーナー承認を必須にする(HITL-4)。
+# Rulesets の "Require review from Code Owners" と組み合わせて初めて強制力を持つ。
+# TODO: @OWNER を実際の GitHub ユーザー名に置換する。
+*                     @OWNER
+/.github/             @OWNER
+/.claude/             @OWNER
+/policies/            @OWNER
+/infra/               @OWNER
+/scripts/verify*      @OWNER
