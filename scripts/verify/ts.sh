@@ -11,6 +11,8 @@ if [ $# -eq 0 ]; then
   if [ "$VERIFY_FIX" = 1 ]; then step "biome check --write" pnpm exec biome check --write .
   else step "biome check" pnpm exec biome check .; fi
   step "tsc (all packages)" pnpm -r --workspace-concurrency=4 typecheck
+  # 型情報 lint は全体の型解決が必要で遅いため、全体モード(CI / Stop hook)でのみ実行する
+  step "eslint (type-aware rules only)" pnpm exec eslint .
   exit $STEP_FAILED
 fi
 
