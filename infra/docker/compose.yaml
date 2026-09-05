@@ -1,0 +1,20 @@
+# ローカル開発用。Phase 3 でアプリ側の Dockerfile を追加し、Phase 5 で container scan の対象にする。
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: shelf
+      POSTGRES_PASSWORD: shelf   # ローカル専用のダミー値。本番相当の値は絶対に置かない
+      POSTGRES_DB: shelf
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shelf -d shelf"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  db-data:
