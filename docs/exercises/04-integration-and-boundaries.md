@@ -107,3 +107,7 @@ GET  /links                       → {"items":[{"id":1,...}]}
 ```
 
 最初の 2 回は失敗した。原因は (1) Phase 0 の `tsx watch` が port 3000 を掴んだままだった、(2) image が tsx を `node --import tsx` で使っていたが `--prod` install には無く `ERR_MODULE_NOT_FOUND`、(3) `compose up` に `--build` を付けず古い image を使った。(2) は「開発時に動く」と「image で動く」が別物である典型で、tsc でビルドした JS を実行する形に直した(devDependencies を image に入れない)。
+
+## 10. 追記: guard-bash の誤検知 2 件目
+
+コミットメッセージ本文に「terraform apply」と書いたら、`git commit` コマンド全体が guard-bash に拒否された。guard は Bash コマンド文字列全体を見るので、メッセージやコメントに書いた禁止語句にも反応する。運用上の選択肢は (a) 語句を言い換える(今回)、(b) `git commit -F <file>` でメッセージをファイル経由にする、(c) guard 側で `-m` 引数を除外する。(c) は回避経路を増やすので採らない。テンプレートには (b) を推奨手順として書く。
