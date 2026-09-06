@@ -198,7 +198,7 @@ Nightly         時間      高       不可      重いスキャン、ドリフ
 | 1 | 静的ゲート | L2 | Biome / Ruff / basedpyright / tsc、`verify.sh --changed`、PostToolUse hook、CI(path filter) | `any` 乱用、floating promise、型抑制コメント | 存在しない API、型の辻褄合わせ、規約逸脱 |
 | 2 | テスト + 完了条件 | L2 | Vitest / pytest、Stop hook = verify、差分カバレッジ報告、lefthook | 失敗テスト、実装をなぞるテスト | リグレッション。「Agent がテストしたと言う」≠「CI が通る」 |
 | 3 | 結合・ビルド・境界 | L3 | Testcontainers、docker build、`permissions.deny` / guard hooks、保護パス(Playwright は Phase 7 へ、sandbox は Phase 5 へ) | SQLi、`.env` 読取、`git push --force`、hook 自身のバグ | サービス間不整合、危険操作 |
-| 4 | セキュリティ | L3 | gitleaks 3 層、CodeQL、Semgrep 自作ルール、Trivy、dependency-review、Dependabot cooldown、`/add-dependency` + Rego | ダミー鍵、脆弱依存、SSRF、未承認依存 | 秘密漏洩、既知 CVE、既知の脆弱パターン |
+| 4 | セキュリティ | L3 | Semgrep 自作ルール(taint)+ p/default、Trivy fs、dependency-review、CodeQL / Scorecard(Nightly)、pnpm minimumReleaseAge / trustPolicy、Dependabot cooldown、`/add-dependency` skill(Rego は Phase 5 へ)、enricher の SSRF 対策実装 | 文字列連結 SQL、検証なし SSRF、脆弱依存、ダミー鍵 | 既知の脆弱パターン、既知 CVE、公開直後の悪性版 |
 | 5 | Container / IaC / Actions / Policy | L3 | Hadolint、Trivy config、actionlint、zizmor、Conftest、harden-runner | root Dockerfile、公開 S3、`pull_request_target`、SHA 未固定 | 実行環境の設定不備、CI 乗っ取り |
 | 6 | Go 追加 + テンプレート化 | L4 | shortener、Go toolchain、`/new-service` skill、reusable workflow | data race、`go vet` 検出 | 3 言語目を数時間で乗せられるか |
 | 7 | テストの信頼性 + フィードバックループ | L5 入口 | mutation test、test-reviewer subagent、`/fix-ci` skill、arch rules、knip、Playwright smoke(UI にフォームが付いてから) | 同語反復テスト、レイヤー違反 | テストの質、構造の腐敗 |
