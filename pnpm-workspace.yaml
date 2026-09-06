@@ -16,3 +16,12 @@ allowBuilds:
 
 # 依存は完全固定で記録する(^ / ~ を付けない)。pnpm 11 では .npmrc ではなくここに書く。
 saveExact: true
+
+# 公開から 7 日(10080 分)経っていない版を解決しない(供給網: 公開直後の悪性版を避ける)。
+minimumReleaseAge: 10080
+
+# 依存更新によって上記のセキュリティ設定が緩められるのを防ぐ(Semgrep p/default の指摘で追加)。
+trustPolicy: no-downgrade
+
+# semver 範囲外の URL / git / tarball 指定のサブ依存を拒否する(Semgrep p/default の指摘で追加)。
+blockExoticSubdeps: true
