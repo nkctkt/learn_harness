@@ -1,4 +1,4 @@
-# CI Phase 2: 静的ゲート(format / lint / typecheck)+ unit test + coverage(報告のみ)+ secret scan。
+# CI Phase 3: 静的ゲート + unit/integration test(Testcontainers)+ coverage(報告のみ)+ secret scan + docker build。
 # hooks と同じ scripts/verify.sh を「全体」に対して実行する。ローカルで回避されていないことの保証が目的。
 # 変更されたパスに応じて言語ごとの job を skip する。skip された job は required check では成功扱いになる。
 name: CI
@@ -22,6 +22,7 @@ jobs:
     outputs:
       ts: ${{ steps.filter.outputs.ts }}
       py: ${{ steps.filter.outputs.py }}
+      docker: ${{ steps.filter.outputs.docker }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - id: filter
@@ -38,6 +39,14 @@ jobs:
               - 'scripts/verify.sh'
               - 'scripts/verify/ts.sh'
               - 'scripts/verify/_lib.sh'
+              - '.github/workflows/ci.yml'
+            docker:
+              - '**/Dockerfile'
+              - '.dockerignore'
+              - 'infra/docker/**'
+              - 'apps/**'
+              - 'services/**'
+              - 'pnpm-lock.yaml'
               - '.github/workflows/ci.yml'
             py:
               - 'services/**'
@@ -97,6 +106,33 @@ jobs:
             jq -r '.totals | "services/enricher: lines \(.percent_covered_display)% (\(.covered_lines)/\(.num_statements))"' "$f"
           } >> "$GITHUB_STEP_SUMMARY" || true
 
+  # image がビルドできること自体をゲートにする(push はしない)。脆弱性スキャンは Phase 5 で追加。
+  docker:
+    name: docker / build images
+    needs: changes
+    if: needs.changes.outputs.docker == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: api, context: ., file: apps/api/Dockerfile }
+          - { name: web, context: ., file: apps/web/Dockerfile }
+          - { name: enricher, context: services/enricher, file: services/enricher/Dockerfile }
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          push: false
+          load: true
+          tags: shelf-${{ matrix.name }}:ci
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,scope=${{ matrix.name }},mode=max
+
   secrets:
     name: secrets / gitleaks (full history)
     runs-on: ubuntu-latest
@@ -116,7 +152,7 @@ jobs:
   ci-ok:
     name: ci-ok
     if: always()
-    needs: [changes, ts, py, secrets]
+    needs: [changes, ts, py, docker, secrets]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:

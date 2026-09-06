@@ -17,6 +17,10 @@ pre-commit:
         else
           echo "gitleaks が未導入のため skip(brew install gitleaks)。CI では必ず実行される。"
         fi
+    - name: shell syntax (hooks / scripts)
+      glob: "*.sh"
+      run: for f in {staged_files}; do bash -n "$f" || exit 1; done
+      # hook の構文エラーは exit 2 = block になり Agent の全ツールが止まる(Exercise 04)。commit 前に必ず弾く。
     - name: verify (staged files)
       glob: "*.{ts,tsx,js,jsx,mjs,cjs,json,jsonc,css,py}"
       run: scripts/verify.sh --files {staged_files}

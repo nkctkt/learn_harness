@@ -3,11 +3,16 @@ packages:
   - packages/*
 
 # pnpm 11 は依存の install スクリプトを既定で実行せず、判断を allowBuilds に明記させる(供給網対策)。
+# 注意: 未記載の依存があると pnpm がここに "set this to true or false" の行を自動挿入する。
 allowBuilds:
   # esbuild の postinstall はバイナリ検証のみで、optionalDependencies 経由で動作するため false(実行しない)。
   esbuild: false
   # lefthook の postinstall は git hooks の登録。root の prepare スクリプトで明示的に行うので false。
   lefthook: false
+  # testcontainers → dockerode → ssh2 の任意ネイティブ高速化。無くても動くので実行しない。
+  cpu-features: false
+  ssh2: false
+  protobufjs: false
 
 # 依存は完全固定で記録する(^ / ~ を付けない)。pnpm 11 では .npmrc ではなくここに書く。
 saveExact: true

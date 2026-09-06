@@ -1,10 +1,10 @@
-# ローカル開発用。Phase 3 でアプリ側の Dockerfile を追加し、Phase 5 で container scan の対象にする。
+# ローカル開発と結合確認用。本番相当の値は置かない。
 services:
   db:
     image: postgres:17-alpine
     environment:
       POSTGRES_USER: shelf
-      POSTGRES_PASSWORD: shelf   # ローカル専用のダミー値。本番相当の値は絶対に置かない
+      POSTGRES_PASSWORD: shelf   # ローカル専用のダミー値
       POSTGRES_DB: shelf
     ports:
       - "5432:5432"
@@ -15,6 +15,24 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  api:
+    build: { context: ../.., dockerfile: apps/api/Dockerfile }
+    environment:
+      DATABASE_URL: postgres://shelf:shelf@db:5432/shelf   # allow-secret: compose 内のローカル専用ダミー
+      ENRICHER_URL: http://enricher:8000
+    ports: ["3000:3000"]
+    depends_on:
+      db: { condition: service_healthy }
+
+  enricher:
+    build: { context: ../../services/enricher }
+    ports: ["8000:8000"]
+
+  web:
+    build: { context: ../.., dockerfile: apps/web/Dockerfile }
+    ports: ["8080:8080"]
+    depends_on: [api]
 
 volumes:
   db-data:

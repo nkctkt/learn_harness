@@ -14,6 +14,7 @@ export default tseslint.config(
       "eslint.config.mjs",
       "**/vite.config.ts",
       "**/vitest.config.ts",
+      "**/drizzle.config.ts",
     ],
   },
   {
