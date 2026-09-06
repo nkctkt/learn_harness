@@ -1,0 +1,95 @@
+# Security(Phase 4): SAST(Semgrep)、SCA + secret + misconfig(Trivy)、依存差分レビュー、Scorecard。
+# ci.yml と同様に security-ok を 1 つの required check として Rulesets に登録する。
+# CodeQL は重いので nightly.yml(schedule)で回す。
+name: Security
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  semgrep:
+    name: sast / semgrep (custom rules + p/default)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+      - run: pip install --quiet semgrep==1.176.0
+      - name: rule tests (ルール自体の回帰テスト)
+        run: semgrep --test policies/semgrep --metrics=off
+      - name: scan
+        run: |
+          semgrep scan --config policies/semgrep --config p/default \
+            --exclude 'policies/semgrep/*.ts' --exclude 'policies/semgrep/*.py' \
+            --metrics=off --error --sarif --output semgrep.sarif . || status=$?
+          semgrep scan --config policies/semgrep --config p/default \
+            --exclude 'policies/semgrep/*.ts' --exclude 'policies/semgrep/*.py' --metrics=off --quiet . || true
+          exit ${status:-0}
+      - uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4
+        if: always()
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+    permissions:
+      contents: read
+      security-events: write
+
+  trivy:
+    name: sca / trivy fs (vuln, secret, misconfig)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scanners: vuln,secret,misconfig
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+          format: sarif
+          output: trivy.sarif
+          skip-dirs: node_modules,.venv
+      - uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4
+        if: always()
+        with:
+          sarif_file: trivy.sarif
+          category: trivy
+
+  # PR で増えた依存だけを見る(脆弱性・ライセンス)。lockfile 全体は trivy が見る。public repo では無償。
+  dependency-review:
+    name: sca / dependency review (PR diff)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+          allow-licenses: MIT, ISC, Apache-2.0, BSD-2-Clause, BSD-3-Clause, 0BSD, CC0-1.0, MPL-2.0, Unlicense, Python-2.0, BlueOak-1.0.0
+          comment-summary-in-pr: on-failure
+
+  security-ok:
+    name: security-ok
+    if: always()
+    needs: [semgrep, trivy, dependency-review]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - run: |
+          echo '${{ toJSON(needs) }}'
+          echo '${{ toJSON(needs) }}' | grep -Eq '"result": *"(failure|cancelled)"' && exit 1 || exit 0
