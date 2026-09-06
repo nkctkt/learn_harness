@@ -19,13 +19,16 @@
 - Enricher: `cd services/enricher && uv run uvicorn enricher.main:app --port 8000`
 - DB: `docker compose -f infra/docker/compose.yaml up -d`
 - 型検査: `pnpm -r typecheck`
-- 全検証(CI と同一): `scripts/verify.sh`(Phase 1 で追加)
+- 全検証(CI と同一): `scripts/verify.sh`。段を限定するなら `--only ts,py,sec`。変更分だけなら `--changed`
+- セキュリティ段のみ: `scripts/verify.sh --only sec`(Semgrep 自作ルール + Trivy)
 
 ## 規約
 
 - 入力は境界(HTTP ハンドラ)で zod / pydantic により検証する。`any` と `# type: ignore` を使わない。
 - 秘密情報をコード・テスト・ログ・コミットに書かない。設定は環境変数経由。
-- 依存追加は理由をコミットメッセージに書く。バージョンは完全固定。
+- 依存追加は `/add-dependency` skill の手順に従う(実在・保守・ライセンス・脆弱性・公開日)。バージョンは完全固定。
+- 外部 URL を取得するコードは `enricher.fetch.fetch_html`(名前解決後の IP で検証)経由のみ。api から直接 fetch しない。
+- SQL は Drizzle のクエリビルダか `sql\`...${x}\``。`sql.raw` に補間・連結を渡さない(Semgrep が拒否する)。
 - 意図的な欠陥を作る演習では、ファイル先頭に `// EXERCISE:` / `# EXERCISE:` コメントを付け、
   `docs/exercises/` に記録してから修正する。
 
