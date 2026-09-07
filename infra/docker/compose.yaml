@@ -29,6 +29,10 @@ services:
     build: { context: ../../services/enricher }
     ports: ["8000:8000"]
 
+  shortener:
+    build: { context: ../../services/shortener }
+    ports: ["8081:8081"]
+
   web:
     build: { context: ../.., dockerfile: apps/web/Dockerfile }
     ports: ["8080:8080"]
