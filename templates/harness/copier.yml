@@ -1,0 +1,57 @@
+# copier テンプレート: learn_harness のハーネス(検証・hooks・CI・ポリシー)を新規リポジトリに敷く。
+#   uv tool run copier copy --trust gh:nkctkt/learn_harness --subdirectory templates/harness <dest>
+#   (ローカル: uv tool run copier copy --trust templates/harness <dest>)
+# 更新の配布: <dest> で `copier update`(3-way merge)。
+_subdirectory: template
+_min_copier_version: "9.0.0"
+_answers_file: .copier-answers.yml
+
+project_name:
+  type: str
+  help: プロジェクト名(AGENTS.md の見出しに使う)
+github_owner:
+  type: str
+  help: GitHub のオーナー(CODEOWNERS に @owner として入る。org なら team も可)
+languages:
+  type: str
+  multiselect: true
+  choices:
+    "TypeScript (pnpm workspace, Biome, tsc, typescript-eslint, Vitest)": ts
+    "Python (uv, Ruff, basedpyright, pytest)": py
+    "Go (gofmt, vet, golangci-lint, -race, govulncheck)": go
+  default: [ts]
+ts_packages:
+  type: str
+  help: "TypeScript のパッケージ(空白区切り。例: apps/api apps/web)"
+  default: ""
+  when: "{{ 'ts' in languages }}"
+py_projects:
+  type: str
+  help: "Python(uv)プロジェクト(空白区切り。例: services/enricher)"
+  default: ""
+  when: "{{ 'py' in languages }}"
+go_modules:
+  type: str
+  help: "Go モジュール(空白区切り。例: services/shortener)"
+  default: ""
+  when: "{{ 'go' in languages }}"
+dockerfiles:
+  type: str
+  help: Dockerfile のパス(空白区切り。無ければ空)
+  default: ""
+terraform_dir:
+  type: str
+  help: Terraform ディレクトリ(無ければ空)
+  default: ""
+required_approvals:
+  type: int
+  help: Rulesets の必要承認数(チームなら 1 以上。単独メンテナは 0)
+  default: 1
+
+_message_after_copy: |
+  生成しました。次に人間がやること(templates/README.md の「適用後」参照):
+    1. AGENTS.md のコマンド・規約をこのプロジェクト向けに埋める
+    2. .github/workflows/ci.yml の path filter とジョブを ts_packages / py_projects / go_modules に合わせる
+    3. gh repo create → push → scripts/github/apply-rulesets.sh → secret scanning / push protection を有効化
+    4. brew install gitleaks semgrep trivy hadolint actionlint conftest(+ go golangci-lint)
+    5. pnpm install(root の prepare が lefthook を登録する)

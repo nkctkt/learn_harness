@@ -1,0 +1,30 @@
+# このコードベース固有の SQL インジェクション検出。
+# Drizzle の sql`...${x}` タグ付きテンプレートはパラメータ化されるので安全。
+# 危険なのは sql.raw(文字列連結) と postgres.js の client.unsafe()。
+rules:
+  - id: shelf.drizzle-sql-raw-interpolation
+    languages: [typescript]
+    severity: ERROR
+    message: >-
+      sql.raw() に文字列補間/連結を渡しています。値が SQL として解釈されます(SQL injection)。
+      sql`...${value}` のタグ付きテンプレート(パラメータ化)か、Drizzle のクエリビルダを使ってください。
+    metadata:
+      cwe: "CWE-89"
+      category: security
+    pattern-either:
+      - pattern: sql.raw(`...${$X}...`)
+      - pattern: sql.raw($A + $B)
+      - pattern: sql.raw($S.concat(...))
+      - pattern: |
+          $Q = `...${$X}...`;
+          ...
+          sql.raw($Q)
+  - id: shelf.postgres-js-unsafe
+    languages: [typescript]
+    severity: ERROR
+    message: >-
+      postgres.js の .unsafe() は文字列をそのまま SQL として実行します。ユーザー入力が届く経路では使わないでください。
+    metadata:
+      cwe: "CWE-89"
+      category: security
+    pattern: $CLIENT.unsafe(...)

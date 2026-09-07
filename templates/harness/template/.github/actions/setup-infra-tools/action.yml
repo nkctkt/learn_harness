@@ -1,0 +1,31 @@
+# hadolint / actionlint / conftest をバージョンと sha256 を固定して導入する composite action。
+# タグ参照の action やリモートスクリプトの直接実行を使わず、ダウンロード物を検証してから PATH に置く。
+# ローカル(brew)と CI で同じバージョンを使うため、更新時は両方を合わせる。
+name: setup-infra-tools
+description: Install pinned hadolint, actionlint and conftest with checksum verification
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        HADOLINT_VERSION: v2.15.1
+        HADOLINT_SHA256: c7187db94eeeeca956519a6af171adc31453941a1e777961f6e680f697c8c507
+        ACTIONLINT_VERSION: 1.7.12
+        ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        CONFTEST_VERSION: 0.69.0
+        CONFTEST_SHA256: 96fc2fbf11f0afde51256647127e6f00a64ce839a4d9a0a1aef2426c0e6f4b3f
+      run: |
+        set -euo pipefail
+        bin="$RUNNER_TEMP/infra-tools"; mkdir -p "$bin"
+        fetch() { # fetch <url> <sha256> <dest>: 取得してからチェックサムを検証する
+          curl -sSfL --retry 3 -o "$3" "$1"
+          echo "$2  $3" | sha256sum -c - >/dev/null
+        }
+        fetch "https://github.com/hadolint/hadolint/releases/download/${HADOLINT_VERSION}/hadolint-linux-x86_64" "$HADOLINT_SHA256" "$bin/hadolint"
+        chmod +x "$bin/hadolint"
+        fetch "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" "$ACTIONLINT_SHA256" "$RUNNER_TEMP/actionlint.tgz"
+        tar -xzf "$RUNNER_TEMP/actionlint.tgz" -C "$bin" actionlint
+        fetch "https://github.com/open-policy-agent/conftest/releases/download/v${CONFTEST_VERSION}/conftest_${CONFTEST_VERSION}_Linux_x86_64.tar.gz" "$CONFTEST_SHA256" "$RUNNER_TEMP/conftest.tgz"
+        tar -xzf "$RUNNER_TEMP/conftest.tgz" -C "$bin" conftest
+        echo "$bin" >> "$GITHUB_PATH"
+        "$bin/hadolint" --version; "$bin/actionlint" -version; "$bin/conftest" --version

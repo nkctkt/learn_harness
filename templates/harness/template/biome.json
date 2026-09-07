@@ -14,8 +14,7 @@
       "!**/.stryker-tmp",
       "!**/mutants",
       "!**/reports",
-      "!contracts",
-      "!templates"
+      "!contracts"
     ]
   },
   "formatter": {
