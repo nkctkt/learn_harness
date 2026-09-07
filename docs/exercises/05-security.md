@@ -81,3 +81,11 @@ Hook 層(編集ごと)には入れない。全体 verify が 32 秒になり、S
 - guard-bash がコマンド文字列全体を見るため、skill の本文に「シェルにパイプする導入」と書けなかった(3 件目の誤検知)。テンプレートでは `git commit -F` と Write ツールの使い分けを手順化する。
 - `/add-dependency` は手順であって強制ではない。Phase 5 の Conftest/Rego で `package.json` の直接依存 allowlist を機械検査する。
 - Trivy の image スキャン(ビルド済み image の OS パッケージ)と Hadolint は Phase 5。
+
+## 8. 追記: CI の Trivy だけが落ちた
+
+ローカルの `trivy fs`(HIGH 以上で exit 1)は通ったのに、CI の `trivy-action` は exit 1 で落ち、SARIF には HIGH 以上の結果が 1 件も無かった。ログに "Building SARIF report with all severities" とあり、**SARIF 出力時は severity フィルタを無視して全件を報告し、`exit-code` も全件に効く** 仕様だった(LOW / MEDIUM の misconfig で落ちていた)。
+
+対処: ゲート(table 出力、HIGH 以上、exit 1)とレポート(SARIF、全 severity、exit 0)を別ステップに分けた。同時に trivy のバージョンを CI とローカルで揃えた(action 同梱は 0.70、ローカルは 0.74)。
+
+学び: **同じツールでも「ローカルで実行したコマンド」と「CI の wrapper action」は別物**。CI の失敗理由が読めない時は、まず wrapper が何を実行したかをログで確認する。ゲートとレポートは要件が違う(ゲートは狭く確実に、レポートは広く)ので、最初から分けて設計する。
