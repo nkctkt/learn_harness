@@ -67,3 +67,19 @@
 - `services/shortener` はメモリ実装。api から呼ぶ配線と DB 実装は Phase 7 以降。
 - CI の golangci-lint-action は導入のみに使い実行は `verify.sh` に統一した。action 側のキャッシュを活かすには `args` で直接実行する方が速いが、「同じスクリプト」原則を優先した。
 - reusable workflow 化は Phase 8 の `templates/` 切り出しと同時に行う。
+
+## 7. 追記: merge が「base branch policy」で拒否された
+
+全 required check が緑、承認要件 0 なのに `gh pr merge` が拒否された。原因は Rulesets の **「会話の解決を必須」**。
+Security workflow が Trivy の SARIF(全 severity)を code scanning にアップロードしており、GitHub Advanced Security が
+`services/shortener/Dockerfile` に **LOW の DS-0026(HEALTHCHECK 無し)** を PR レビューコメントとして付けていた。
+未解決スレッドが 1 つあるだけで merge は止まる。
+
+- ゲート(HIGH 以上で fail)とレポート(全 severity)を分けた設計(Exercise 05)の副作用。**レポートが PR コメントになると、
+  それ自体が「会話の解決」要件を通じてゲート化する。** LOW を merge ブロックにするつもりは無かった。
+- 対処は 2 通り: (a) 指摘を直す、(b) スレッドを解決する。今回は (a)。distroless にはシェルが無いので、
+  バイナリに `-healthcheck` モードを足し、`HEALTHCHECK CMD ["/shortener", "-healthcheck"]` にした。
+- 設計判断: code scanning の PR コメントは HIGH 以上に絞るか(upload 側で severity をフィルタ)、
+  `required_review_thread_resolution` を外すか。次の Phase で「レポートはコメントにしない(Security タブのみ)」に寄せる。
+- 副産物のミス: merge 失敗後に `git branch -D` を実行してローカルブランチを消してしまった(コマンド連結で `;` を使ったため失敗しても続行した)。
+  リモートから復元できたが、**`&&` で「前段が成功した時だけ」にすべき典型例**。

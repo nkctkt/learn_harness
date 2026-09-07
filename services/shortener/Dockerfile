@@ -14,4 +14,6 @@ FROM gcr.io/distroless/static-debian12:nonroot AS runtime
 COPY --from=build /out/shortener /shortener
 USER 65532
 EXPOSE 8081
+# シェル無しなので、バイナリ自身の -healthcheck モードで /health を叩く(Trivy DS-0026)
+HEALTHCHECK --interval=10s --timeout=3s --retries=3 CMD ["/shortener", "-healthcheck"]
 ENTRYPOINT ["/shortener"]
