@@ -76,3 +76,18 @@
 - test-reviewer subagent は定義しただけで、このセッションでは呼び出していない(セッション開始時にロードされるため)。次のセッションで `apps/api/src/app.test.ts` を対象に試す。
 - api → enricher / shortener の配線、web のフォーム、Playwright smoke は Phase 7b(別 PR)。
 - mutmut は `mutants/` に全ソースのコピーを作る。CI では毎回生成するので実行時間(数分)を観測して、必要なら対象を絞る。
+
+## 7. 追記: ライセンスゲートが新規依存で発火した
+
+この PR で初めて dependency-review の **ライセンス allowlist** が fail した。脆弱性は 0 件。
+
+| 依存 | 経路 | ライセンス | 判断 |
+|---|---|---|---|
+| `caniuse-lite@1.0.30001810` | dependency-cruiser → browserslist | CC-BY-4.0 | データセットの帰属表示義務のみ。許可に追加 |
+| `grimp@3.17` | import-linter | `BSD-2-Clause AND BSD-2-Clause-Views AND BSD-3-Clause` | 複合 SPDX 式。個々は許容範囲なので `BSD-2-Clause-Views` を追加 |
+
+学び:
+
+- ライセンスゲートは「知らない間に GPL が入る」だけでなく、**許容できるが allowlist に無いもの**を止める。止まった時に「なぜこのライセンスなら良いか」を allowlist のコメントに残すのが運用。
+- 開発ツール(devDependencies)でも lockfile に入れば対象になる。dependency-review-action は本番 / 開発を区別しない設定にしている(`fail-on-scopes` の既定は runtime のみだが、ここでは両方見たい)。
+- 複合 SPDX 式(`A AND B`)は構成要素すべてが allowlist に無いと不許可になる。

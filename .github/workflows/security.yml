@@ -114,7 +114,8 @@ jobs:
       - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
           fail-on-severity: high
-          allow-licenses: MIT, ISC, Apache-2.0, BSD-2-Clause, BSD-3-Clause, 0BSD, CC0-1.0, MPL-2.0, Unlicense, Python-2.0, BlueOak-1.0.0
+          # CC-BY-4.0: caniuse-lite(ブラウザ対応データ)。BSD-2-Clause-Views: grimp(import-linter の依存)。どちらも配布制約は表示義務のみ
+          allow-licenses: MIT, ISC, Apache-2.0, BSD-2-Clause, BSD-2-Clause-Views, BSD-3-Clause, 0BSD, CC0-1.0, CC-BY-4.0, MPL-2.0, Unlicense, Python-2.0, BlueOak-1.0.0
           comment-summary-in-pr: on-failure
 
   # Dockerfile / Terraform / workflows / Rego ポリシー。ローカルと同じ scripts/verify.sh --only infra を実行する。
