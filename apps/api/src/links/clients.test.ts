@@ -68,7 +68,7 @@ describe("httpShortener", () => {
   it("returns a well-formed code", async () => {
     const s = httpShortener({
       baseUrl: "http://shortener",
-      fetchFn: fakeFetch(201, { code: "abc2345", target: "x" }),
+      fetchFn: fakeFetch(201, { code: "abc2345", target: "https://example.com" }),
     });
     expect(await s.shorten("https://example.com")).toBe("abc2345");
   });
