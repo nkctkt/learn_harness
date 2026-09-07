@@ -203,7 +203,8 @@ Nightly         時間      高       不可      重いスキャン、ドリフ
 | 6 | Go 追加 + テンプレート化 | L4 | shortener(distroless)、Go toolchain(gofmt / vet / golangci-lint / `-race` / govulncheck)、`scripts/verify/go.sh`、CI go job、`/new-service` skill(reusable workflow 化は Phase 8 の `templates/` と一緒に) | data race、`go vet` printf、errcheck、gosec、到達可能な脆弱依存 | 3 言語目を何分で乗せられるか(実測は Exercise 07) |
 | 7 | テストの信頼性 + フィードバックループ | L5 入口 | Stryker / mutmut(Nightly 週次、報告のみ)、dependency-cruiser / import-linter(error)、knip(warn)、test-reviewer subagent、`/fix-ci` skill、PR 時の SARIF を HIGH+ に限定 | 同語反復テスト、レイヤー違反、未使用依存 | テストの質、構造の腐敗 |
 | 7b | アプリ配線 + E2E | - | api → enricher(title 補完)/ shortener(短縮コード)を zod 検証付きクライアントで配線、web のフォーム + 型付き API client、Playwright smoke(API モック、CI)、compose で全サービス結合確認 | サービス間の契約不一致(応答フィールド名の変更) | 結合の劣化(検出は実行時 warn のみ。契約テストは Phase 8 の課題) |
-| 8 | Supply chain + 一般化 | L4 | SBOM、provenance、release workflow、`templates/`、copier 化、docs 完成 | - | 出荷物の追跡可能性 |
+| 8a | 契約 + 出荷物の証明 | L5 | zod → JSON Schema の契約(`contracts/`)+ producer 側契約テスト(Go / Py)、test-reviewer subagent の実行と対応(バグ 1 件発見)、`release.yml`(GHCR、provenance / SBOM attestation、image gate。タグ未実行) | 応答フィールド名の変更 | サービス間契約の破壊、出荷物の出所不明 |
+| 8b | 一般化 + 運用 | L4 | `templates/` + copier、docs 4 本(quality-engineering / harness-architecture / ci-design / security)、Claude sandbox、harden-runner block、Dependabot triage(#11 の BLOCKED 原因)、`v0.1.0` タグで release 検証、README 復旧手順 | - | テンプレートのドリフト |
 
 Phase 1〜4 が本質。ここまでで 7 割の価値が出る。
 
