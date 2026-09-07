@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
+import type { Enricher, Shortener } from "./clients.js";
 import type { LinkRepository } from "./repository.js";
 import { isPublicHost, normalizeUrl } from "./url.js";
 
@@ -8,7 +9,9 @@ const createLinkBody = z.object({
   title: z.string().trim().min(1).max(200).optional(),
 });
 
-export function linkRoutes(repo: LinkRepository) {
+export type LinkDeps = { repo: LinkRepository; enricher: Enricher; shortener: Shortener };
+
+export function linkRoutes({ repo, enricher, shortener }: LinkDeps) {
   const app = new Hono();
 
   app.get("/links", async (c) => c.json({ items: await repo.list() }));
@@ -28,7 +31,16 @@ export function linkRoutes(repo: LinkRepository) {
     const existing = await repo.findByHref(normalized.href);
     if (existing) return c.json({ item: existing }, 200);
 
-    const item = await repo.create({ ...normalized, title: parsed.data.title ?? null });
+    // 補助サービスは並列に呼び、どちらが落ちても保存は成功させる(clients.ts が undefined に畳む)
+    const [enriched, shortCode] = await Promise.all([
+      parsed.data.title ? Promise.resolve(undefined) : enricher.enrich(normalized.href),
+      shortener.shorten(normalized.href),
+    ]);
+    const item = await repo.create({
+      ...normalized,
+      title: parsed.data.title ?? enriched?.title ?? null,
+      shortCode: shortCode ?? null,
+    });
     return c.json({ item }, 201);
   });
 

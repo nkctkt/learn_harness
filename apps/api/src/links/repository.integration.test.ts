@@ -2,6 +2,7 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testconta
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../app.js";
 import { createDb, type Db, migrateDb } from "../db/client.js";
+import { noopEnricher, noopShortener } from "./clients.js";
 import { createLinkRepository } from "./repository.js";
 
 /**
@@ -44,7 +45,7 @@ describe("LinkRepository (postgres)", () => {
 
   it("treats SQL metacharacters in input as data, not as SQL", async () => {
     const repo = createLinkRepository(db);
-    const app = createApp(repo);
+    const app = createApp({ repo, enricher: noopEnricher, shortener: noopShortener });
     const hostile = "https://example.com/?q=' OR 1=1; DROP TABLE links; --";
     const res = await app.request("/links", {
       method: "POST",

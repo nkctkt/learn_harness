@@ -1,11 +1,10 @@
 import { Hono } from "hono";
-import type { LinkRepository } from "./links/repository.js";
-import { linkRoutes } from "./links/routes.js";
+import { type LinkDeps, linkRoutes } from "./links/routes.js";
 
-/** ルーティングだけを組み立てる。DB 接続は index.ts / テストが注入する(テスト容易性)。 */
-export function createApp(repo: LinkRepository) {
+/** ルーティングだけを組み立てる。DB 接続や他サービスのクライアントは index.ts / テストが注入する。 */
+export function createApp(deps: LinkDeps) {
   const app = new Hono();
   app.get("/health", (c) => c.json({ status: "ok", service: "api" }));
-  app.route("/", linkRoutes(repo));
+  app.route("/", linkRoutes(deps));
   return app;
 }

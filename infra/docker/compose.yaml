@@ -21,9 +21,12 @@ services:
     environment:
       DATABASE_URL: postgres://shelf:shelf@db:5432/shelf   # allow-secret: compose 内のローカル専用ダミー
       ENRICHER_URL: http://enricher:8000
+      SHORTENER_URL: http://shortener:8081
     ports: ["3000:3000"]
     depends_on:
       db: { condition: service_healthy }
+      enricher: { condition: service_started }
+      shortener: { condition: service_started }
 
   enricher:
     build: { context: ../../services/enricher }

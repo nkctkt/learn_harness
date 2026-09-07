@@ -23,6 +23,7 @@ jobs:
       ts: ${{ steps.filter.outputs.ts }}
       py: ${{ steps.filter.outputs.py }}
       go: ${{ steps.filter.outputs.go }}
+      web: ${{ steps.filter.outputs.web }}
       docker: ${{ steps.filter.outputs.docker }}
     steps:
       - uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2
@@ -52,6 +53,10 @@ jobs:
               - 'infra/docker/**'
               - 'apps/**'
               - 'services/**'
+              - 'pnpm-lock.yaml'
+              - '.github/workflows/ci.yml'
+            web:
+              - 'apps/web/**'
               - 'pnpm-lock.yaml'
               - '.github/workflows/ci.yml'
             go:
@@ -129,6 +134,36 @@ jobs:
               jq -r '.totals | "services/enricher: lines \(.percent_covered_display)% (\(.covered_lines)/\(.num_statements))"' "$f"
             } >> "$GITHUB_STEP_SUMMARY"
           fi
+
+  # UI smoke(Playwright)。API は page.route でモックするので DB もサービスも要らない。
+  # 全サービス結合の E2E は compose(ローカル)で行い、CI には載せない(コストと flakiness)。
+  e2e:
+    name: web / playwright smoke (mocked api)
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: package.json
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @shelf/web exec playwright install --with-deps chromium
+      - run: pnpm --filter @shelf/web test:e2e
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report
+          retention-days: 7
 
   go:
     name: go / vet, golangci-lint, test -race, govulncheck
@@ -223,7 +258,7 @@ jobs:
   ci-ok:
     name: ci-ok
     if: always()
-    needs: [changes, ts, py, go, docker, secrets]
+    needs: [changes, ts, py, go, e2e, docker, secrets]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
