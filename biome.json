@@ -13,7 +13,8 @@
       "!pnpm-lock.yaml",
       "!**/.stryker-tmp",
       "!**/mutants",
-      "!**/reports"
+      "!**/reports",
+      "!contracts"
     ]
   },
   "formatter": {

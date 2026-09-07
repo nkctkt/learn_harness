@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "shortener.links.response.schema.json",
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "string",
+      "pattern": "^[a-z2-9]{7}$"
+    },
+    "target": {
+      "type": "string",
+      "format": "uri"
+    }
+  },
+  "required": [
+    "code",
+    "target"
+  ],
+  "additionalProperties": {}
+}

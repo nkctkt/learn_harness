@@ -43,8 +43,13 @@ describe("POST /links", () => {
     const res = await post(app, { url: "https://Example.com/x#y", title: "Ex" });
     expect(res.status).toBe(201);
     const { item } = (await res.json()) as { item: Link };
-    expect(item.href).toBe("https://example.com/x");
-    expect(item.title).toBe("Ex");
+    expect(item).toMatchObject({
+      href: "https://example.com/x",
+      host: "example.com",
+      title: "Ex",
+      shortCode: null,
+    });
+    expect(typeof item.id).toBe("number");
   });
 
   it("returns the existing row instead of duplicating", async () => {
@@ -58,6 +63,11 @@ describe("POST /links", () => {
     [{ url: "javascript:alert(1)" }, "unsupported protocol"],
     [{ url: "http://127.0.0.1:8080/admin" }, "host is not public"],
     [{ url: "http://169.254.169.254/latest/meta-data" }, "host is not public"],
+    [{ url: "http://172.25.0.1/" }, "host is not public"],
+    [{ url: "http://[fe80::1]/" }, "host is not public"],
+    [{ url: "https://example.com/x", title: "" }, "invalid body"],
+    [{ url: "https://example.com/x", title: "   " }, "invalid body"],
+    [{ url: "https://example.com/x", title: "a".repeat(201) }, "invalid body"],
     [{ title: "no url" }, "invalid body"],
     ["not json", "invalid body"],
   ])("rejects %j with 400", async (body, message) => {

@@ -15,6 +15,8 @@ if [ $# -eq 0 ]; then
   step "eslint (type-aware rules only)" pnpm exec eslint .
   # テストは全体モードではカバレッジ付きで実行する(json-summary を CI の job summary に使う)。閾値では落とさない。
   step "vitest (all packages, coverage)" pnpm -r --workspace-concurrency=4 test:coverage
+  # 契約(contracts/*.schema.json)が api の zod スキーマと一致していること(drift 検出)
+  step "contracts:check (zod → JSON Schema drift)" pnpm --filter @shelf/api contracts:check
   # アーキテクチャ規約(レイヤー・循環)は lint も型も見ない。違反は error。
   step "dependency-cruiser (architecture rules)" pnpm exec depcruise --config .dependency-cruiser.cjs apps/api/src apps/web/src
   # 未使用 export / 依存は警告のみ(AI が残しがちだが、false positive もあるので merge block にしない)

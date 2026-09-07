@@ -68,10 +68,20 @@ describe("httpShortener", () => {
   it("returns a well-formed code", async () => {
     const s = httpShortener({
       baseUrl: "http://shortener",
-      fetchFn: fakeFetch(201, { code: "abc2345", target: "x" }),
+      fetchFn: fakeFetch(201, { code: "abc2345", target: "https://example.com" }),
     });
     expect(await s.shorten("https://example.com")).toBe("abc2345");
   });
+  it.each(["abc234", "abc23456", "abc0234", "abc1234"])(
+    "rejects code %s (length or alphabet)",
+    async (code) => {
+      const s = httpShortener({
+        baseUrl: "http://shortener",
+        fetchFn: fakeFetch(201, { code, target: "https://example.com" }),
+      });
+      expect(await s.shorten("https://example.com")).toBeUndefined();
+    },
+  );
   it("rejects a code that does not match the shortener's alphabet", async () => {
     const w = warn();
     const s = httpShortener({

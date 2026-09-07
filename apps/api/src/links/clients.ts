@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { enrichResponse, shortenResponse } from "./contracts.js";
 
 /**
  * 他サービスへの呼び出し。どちらも「無くても保存はできる」補助機能なので、
@@ -9,9 +9,6 @@ export type Enricher = { enrich(href: string): Promise<{ title?: string } | unde
 export type Shortener = { shorten(href: string): Promise<string | undefined> };
 
 type Logger = { warn(msg: string, meta?: Record<string, unknown>): void };
-
-const enrichResponse = z.object({ title: z.string().nullable() }).passthrough();
-const shortenResponse = z.object({ code: z.string().regex(/^[a-z2-9]{7}$/) }).passthrough();
 
 type Options = { baseUrl: string; timeoutMs?: number; log?: Logger; fetchFn?: typeof fetch };
 
