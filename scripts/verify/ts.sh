@@ -15,6 +15,10 @@ if [ $# -eq 0 ]; then
   step "eslint (type-aware rules only)" pnpm exec eslint .
   # テストは全体モードではカバレッジ付きで実行する(json-summary を CI の job summary に使う)。閾値では落とさない。
   step "vitest (all packages, coverage)" pnpm -r --workspace-concurrency=4 test:coverage
+  # アーキテクチャ規約(レイヤー・循環)は lint も型も見ない。違反は error。
+  step "dependency-cruiser (architecture rules)" pnpm exec depcruise --config .dependency-cruiser.cjs apps/api/src apps/web/src
+  # 未使用 export / 依存は警告のみ(AI が残しがちだが、false positive もあるので merge block にしない)
+  if out="$(pnpm exec knip --no-progress 2>&1)"; then echo "  ✔ knip (dead code, warn-only)"; else echo "  ! knip (warn-only)"; printf '%s\n' "$out" | sed 's/^/      /' | tail -n 30; fi
   exit $STEP_FAILED
 fi
 
