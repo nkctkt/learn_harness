@@ -35,6 +35,34 @@ describe("createApi", () => {
     const r = await createApi(f as unknown as typeof fetch).create("https://b");
     expect(r).toMatchObject({ ok: true, item: { shortCode: "abc2345" } });
   });
+  it("sends the title only when provided", async () => {
+    const f = vi.fn(() =>
+      json(201, {
+        item: { id: 3, href: "https://c", host: "c", title: "C", shortCode: null, createdAt: "" },
+      }),
+    );
+    const api = createApi(f as unknown as typeof fetch);
+    await api.create("https://c", "My title");
+    await api.create("https://c");
+    const bodies = (f as unknown as { mock: { calls: [string, RequestInit][] } }).mock.calls.map(
+      (c) => c[1].body,
+    );
+    expect(bodies[0]).toBe(JSON.stringify({ url: "https://c", title: "My title" }));
+    expect(bodies[1]).toBe(JSON.stringify({ url: "https://c" }));
+  });
+  it("treats a 2xx without an item as an error", async () => {
+    const f = vi.fn(() => json(201, {}));
+    expect(await createApi(f as unknown as typeof fetch).create("https://d")).toEqual({
+      ok: false,
+      error: "http 201",
+    });
+  });
+  it("throws with the status when listing fails", async () => {
+    const f = vi.fn(() => json(500, {}));
+    await expect(createApi(f as unknown as typeof fetch).list()).rejects.toThrow(
+      "list failed: 500",
+    );
+  });
   it("surfaces the API error message on 400", async () => {
     const f = vi.fn(() => json(400, { error: "host is not public" }));
     const r = await createApi(f as unknown as typeof fetch).create("http://127.0.0.1");

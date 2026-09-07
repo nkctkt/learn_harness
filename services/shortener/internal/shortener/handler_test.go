@@ -94,3 +94,46 @@ func TestUnknownAndMalformedCodes(t *testing.T) {
 		}
 	}
 }
+
+// test-reviewer の指摘 (重大 5): /health は Docker HEALTHCHECK が依存しているのにテストが無かった。
+func TestHealth(t *testing.T) {
+	srv := newServer(t)
+	res, err := http.Get(srv.URL + "/health")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	var body map[string]string
+	_ = json.NewDecoder(res.Body).Decode(&body)
+	if res.StatusCode != http.StatusOK || body["status"] != "ok" || body["service"] != "shortener" {
+		t.Fatalf("health: %d %v", res.StatusCode, body)
+	}
+}
+
+// test-reviewer の指摘 (中 9, 10): 長さ違反と文字種違反を分け、validateTarget の 3 種のメッセージを区別する。
+func TestCodeCharsetIsCheckedIndependentlyOfLength(t *testing.T) {
+	srv := newServer(t)
+	res, err := http.Get(srv.URL + "/abcD234") // 7 文字ちょうど、大文字 1 つ
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusNotFound {
+		t.Fatalf("status %d, want 404", res.StatusCode)
+	}
+}
+
+func TestBadTargetMessages(t *testing.T) {
+	srv := newServer(t)
+	cases := map[string]string{
+		`{"target":""}`:          "target is required",
+		`{"target":"/relative"}`: "absolute http(s) url",
+		`{"target":"https://` + strings.Repeat("a", 2050) + `.com"}`: "too long",
+	}
+	for body, want := range cases {
+		_, out := postLink(t, srv.URL, body)
+		if !strings.Contains(out["error"], want) {
+			t.Errorf("%.30s: error %q does not contain %q", body, out["error"], want)
+		}
+	}
+}
