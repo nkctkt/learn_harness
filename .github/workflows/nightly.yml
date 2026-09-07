@@ -49,6 +49,7 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
+          version: v0.74.0 # ローカルの trivy と揃える(action 同梱版は古く挙動が違った)
           scan-type: fs
           scanners: vuln
           severity: MEDIUM,HIGH,CRITICAL

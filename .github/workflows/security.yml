@@ -53,16 +53,32 @@ jobs:
       security-events: write
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+      # ゲート: HIGH 以上で fail。table 出力なのでログで理由が読める。
+      # (trivy-action は format=sarif の時 "all severities" でレポートを作り、exit-code も全件に効くので gate と分ける)
+      - name: gate (HIGH/CRITICAL, table)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
+          version: v0.74.0 # ローカルの trivy と揃える
           scan-type: fs
           scanners: vuln,secret,misconfig
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: "1"
+          format: table
+          skip-dirs: node_modules,.venv
+      # レポート: 全 severity を SARIF で Security タブへ。merge はブロックしない。
+      - name: report (all severities, sarif)
+        if: always()
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.74.0
+          scan-type: fs
+          scanners: vuln,secret,misconfig
+          exit-code: "0"
           format: sarif
           output: trivy.sarif
           skip-dirs: node_modules,.venv
+          skip-setup-trivy: true
       - uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4
         if: always()
         with:
