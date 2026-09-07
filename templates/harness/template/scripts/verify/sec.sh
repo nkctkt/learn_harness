@@ -12,7 +12,7 @@ if command -v semgrep >/dev/null 2>&1; then
   step "semgrep --test policies/semgrep (ルール自体のテスト)" semgrep --test policies/semgrep --metrics=off
   # ルール検体(policies/semgrep/*.ts|py)は意図的に悪いコードなのでスキャン対象から外す(--test でのみ使う)
   step "semgrep scan (自作ルール + p/default)" semgrep scan --config policies/semgrep --config p/default \
-    --exclude 'policies/semgrep/*.ts' --exclude 'policies/semgrep/*.py' --exclude templates --metrics=off --error --quiet .
+    --exclude 'policies/semgrep/*.ts' --exclude 'policies/semgrep/*.py' --metrics=off --error --quiet .
 else
   echo "  - semgrep not installed (CI で実行される)"
 fi

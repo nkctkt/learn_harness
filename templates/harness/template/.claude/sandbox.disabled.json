@@ -1,0 +1,37 @@
+{
+  "_comment": "Claude Code sandbox の設計例。有効化する時は allowedDomains を自分のプロジェクトの実測(harden-runner の audit、ローカル 1 日分)で埋めてから settings.json の sandbox キーに移す。docker.sock を allowUnixSockets に入れない(ホスト奪取経路)。",
+  "sandbox": {
+    "enabled": true,
+    "failIfUnavailable": true,
+    "allowUnsandboxedCommands": false,
+    "network": {
+      "allowedDomains": [
+        "registry.npmjs.org",
+        "pypi.org",
+        "files.pythonhosted.org",
+        "proxy.golang.org",
+        "sum.golang.org",
+        "storage.googleapis.com",
+        "github.com",
+        "api.github.com",
+        "objects.githubusercontent.com",
+        "ghcr.io",
+        "registry-1.docker.io",
+        "auth.docker.io",
+        "production.cloudflare.docker.com",
+        "gcr.io",
+        "mirror.gcr.io",
+        "semgrep.dev",
+        "playwright.azureedge.net",
+        "api.anthropic.com"
+      ]
+    },
+    "credentials": {
+      "files": [
+        { "path": "~/.aws", "mode": "deny" },
+        { "path": "~/.ssh", "mode": "deny" },
+        { "path": "~/.config/gh", "mode": "deny" }
+      ]
+    }
+  }
+}

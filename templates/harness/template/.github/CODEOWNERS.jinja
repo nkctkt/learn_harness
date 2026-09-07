@@ -1,0 +1,9 @@
+# ハーネス自体(CI / Claude 設定 / ポリシー / IaC / verify)の変更はオーナー承認を必須にする(HITL-4)。
+# Rulesets の "Require review from Code Owners" と組み合わせて初めて強制力を持つ。
+# 注意: bot(Dependabot)の PR もオーナーの approve が要る(意図どおり)。
+*                     @{{ github_owner }}
+/.github/             @{{ github_owner }}
+/.claude/             @{{ github_owner }}
+/policies/            @{{ github_owner }}
+/infra/               @{{ github_owner }}
+/scripts/verify*      @{{ github_owner }}

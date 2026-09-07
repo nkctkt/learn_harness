@@ -1,0 +1,66 @@
+# ユーザー入力に由来する URL を、公開ホスト検証を通さずに取得するパターン(SSRF)。
+# taint モード: source(リクエスト由来) → sink(HTTP 取得)。sanitizer を通れば報告しない。
+rules:
+  - id: shelf.ts-ssrf-unvalidated-fetch
+    languages: [typescript]
+    severity: ERROR
+    mode: taint
+    message: >-
+      リクエスト由来の値を検証せずに fetch しています(SSRF)。normalizeUrl + isPublicHost を通すか、
+      enricher サービス(名前解決後の IP で検証)に委譲してください。
+    metadata:
+      cwe: "CWE-918"
+      category: security
+    pattern-sources:
+      - pattern: c.req.json()
+      - pattern: c.req.query(...)
+      - pattern: c.req.param(...)
+      - pattern: c.req.text()
+    pattern-sanitizers:
+      - pattern: isPublicHost(...)
+      - pattern: assertPublicUrl(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: fetch($URL, ...)
+              - pattern: $CLIENT.get($URL, ...)
+              - pattern: $CLIENT.post($URL, ...)
+          - focus-metavariable: $URL
+  - id: shelf.py-ssrf-unvalidated-request
+    languages: [python]
+    severity: ERROR
+    mode: taint
+    message: >-
+      リクエスト由来の URL を resolve_public_url() を通さずに取得しています(SSRF)。
+      enricher.fetch.fetch_html を使うか、resolve_public_url で検証してください。
+    metadata:
+      cwe: "CWE-918"
+      category: security
+    pattern-sources:
+      - patterns:
+          - pattern-inside: |
+              @$APP.$METHOD(...)
+              async def $F(..., $REQ: $T, ...):
+                ...
+          - pattern: $REQ.url
+      - patterns:
+          - pattern-inside: |
+              @$APP.$METHOD(...)
+              def $F(..., $REQ: $T, ...):
+                ...
+          - pattern: $REQ.url
+    pattern-sanitizers:
+      - pattern: resolve_public_url(...)
+      - pattern: fetch_html(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: httpx.get($URL, ...)
+              - pattern: httpx.post($URL, ...)
+              - pattern: requests.get($URL, ...)
+              - pattern: requests.post($URL, ...)
+              - pattern: $C.get($URL, ...)
+              - pattern: $C.post($URL, ...)
+              - pattern: $C.stream($M, $URL, ...)
+              - pattern: urllib.request.urlopen($URL, ...)
+          - focus-metavariable: $URL

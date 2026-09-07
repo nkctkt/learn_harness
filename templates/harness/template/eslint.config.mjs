@@ -17,7 +17,6 @@ export default tseslint.config(
       "**/.stryker-tmp/**",
       "**/e2e/**",
       "apps/api/scripts/**",
-      "templates/**",
       "**/playwright.config.ts",
       "**/drizzle.config.ts",
     ],

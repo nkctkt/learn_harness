@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# verify.sh が対象にするパッケージ・モジュールの一覧(copier が生成。プロジェクト固有の値はここだけ)。
+# 空にした言語の段は「対象なし」として skip される。
+TS_PACKAGES=({{ ts_packages | default('') }})
+TS_ARCH_DIRS=({% for p in (ts_packages | default('')).split() %}{{ p }}/src {% endfor %})
+TS_CONTRACTS_FILTER=""
+PY_PROJECTS=({{ py_projects | default('') }})
+GO_MODULES=({{ go_modules | default('') }})
+DOCKERFILES=({{ dockerfiles | default('') }})
+TERRAFORM_DIR={{ terraform_dir | default('') }}

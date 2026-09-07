@@ -9,3 +9,4 @@ docs
 **/.stryker-tmp
 **/mutants
 **/reports
+templates/

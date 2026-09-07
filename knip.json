@@ -2,8 +2,14 @@
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "workspaces": {
     ".": {},
-    "apps/api": { "entry": ["stryker.config.json"], "project": ["src/**/*.ts"] },
-    "apps/web": { "entry": ["index.html"], "project": ["src/**/*.{ts,tsx}"] }
+    "apps/api": {
+      "entry": ["stryker.config.json"],
+      "project": ["src/**/*.ts"]
+    },
+    "apps/web": {
+      "entry": ["index.html"],
+      "project": ["src/**/*.{ts,tsx}"]
+    }
   },
-  "ignore": ["policies/semgrep/**"]
+  "ignore": ["policies/semgrep/**", "templates/**"]
 }
