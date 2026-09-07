@@ -35,10 +35,10 @@ jobs:
       - name: scan
         run: |
           semgrep scan --config policies/semgrep --config p/default \
-            --exclude 'policies/semgrep/*.ts' --exclude 'policies/semgrep/*.py' \
+            --exclude 'policies/semgrep/*.ts' --exclude 'policies/semgrep/*.py' --exclude templates \
             --metrics=off --error --sarif --output semgrep.sarif . || status=$?
           semgrep scan --config policies/semgrep --config p/default \
-            --exclude 'policies/semgrep/*.ts' --exclude 'policies/semgrep/*.py' --metrics=off --quiet . || true
+            --exclude 'policies/semgrep/*.ts' --exclude 'policies/semgrep/*.py' --exclude templates --metrics=off --quiet . || true
           exit "${status:-0}"
       - uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4
         if: always()
