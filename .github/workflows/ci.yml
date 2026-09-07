@@ -116,10 +116,12 @@ jobs:
         if: always()
         run: |
           f=services/enricher/coverage.json
-          [ -f "$f" ] && {
-            echo "### Coverage (py)"; echo
-            jq -r '.totals | "services/enricher: lines \(.percent_covered_display)% (\(.covered_lines)/\(.num_statements))"' "$f"
-          } >> "$GITHUB_STEP_SUMMARY" || true
+          if [ -f "$f" ]; then
+            {
+              echo "### Coverage (py)"; echo
+              jq -r '.totals | "services/enricher: lines \(.percent_covered_display)% (\(.covered_lines)/\(.num_statements))"' "$f"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
 
   # image がビルドできること自体をゲートにする(push はしない)。脆弱性スキャンは Phase 5 で追加。
   docker:
