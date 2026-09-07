@@ -22,15 +22,19 @@ RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
 # ---- runtime: 非 root、JS と migration と実行時依存のみ ----
 FROM node:24-alpine AS runtime
 ENV NODE_ENV=production PORT=3000
-RUN addgroup -S app && adduser -S app -G app
+# ベース image 由来の既知 CVE を減らす(Exercise 06): OS パッケージを最新に、実行時に不要な npm を取り除く。
+# npm 同梱の依存(tar / brace-expansion 等)は我々の lockfile 外で、Trivy image スキャンだけが見つける。
+RUN apk upgrade --no-cache \
+ && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx /opt/yarn* /usr/local/bin/yarn /usr/local/bin/yarnpkg \
+ && addgroup -S -g 10001 app && adduser -S -u 10001 -G app app
 WORKDIR /repo
 COPY --from=deps /repo/node_modules ./node_modules
 COPY --from=deps /repo/apps/api/node_modules ./apps/api/node_modules
 COPY --from=build /repo/apps/api/dist ./apps/api/dist
 COPY apps/api/package.json ./apps/api/
 COPY apps/api/drizzle ./apps/api/drizzle
-USER app
+USER 10001
 WORKDIR /repo/apps/api
 EXPOSE 3000
-HEALTHCHECK --interval=10s --timeout=3s --retries=3 CMD wget -qO- http://127.0.0.1:3000/health || exit 1
+HEALTHCHECK --interval=10s --timeout=3s --retries=3 CMD ["wget", "-qO-", "http://127.0.0.1:3000/health"]
 CMD ["node", "dist/index.js"]

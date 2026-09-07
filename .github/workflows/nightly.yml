@@ -28,7 +28,12 @@ jobs:
           - { language: python, build-mode: none }
           - { language: actions, build-mode: none }
     steps:
+      - uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2
+        with:
+          egress-policy: audit # まず観測。想定外の宛先が無いことを確認してから block に切り替える(Phase 8)
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
       - uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4
         with:
           languages: ${{ matrix.language }}
@@ -46,7 +51,12 @@ jobs:
       contents: read
       security-events: write
     steps:
+      - uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2
+        with:
+          egress-policy: audit # まず観測。想定外の宛先が無いことを確認してから block に切り替える(Phase 8)
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
       - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           version: v0.74.0 # ローカルの trivy と揃える(action 同梱版は古く挙動が違った)
@@ -71,6 +81,9 @@ jobs:
       security-events: write
       id-token: write
     steps:
+      - uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2
+        with:
+          egress-policy: audit # まず観測。想定外の宛先が無いことを確認してから block に切り替える(Phase 8)
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false

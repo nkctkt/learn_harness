@@ -20,7 +20,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2
+        with:
+          egress-policy: audit # まず観測。想定外の宛先が無いことを確認してから block に切り替える(Phase 8)
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.13"
@@ -34,7 +39,7 @@ jobs:
             --metrics=off --error --sarif --output semgrep.sarif . || status=$?
           semgrep scan --config policies/semgrep --config p/default \
             --exclude 'policies/semgrep/*.ts' --exclude 'policies/semgrep/*.py' --metrics=off --quiet . || true
-          exit ${status:-0}
+          exit "${status:-0}"
       - uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4
         if: always()
         with:
@@ -52,7 +57,12 @@ jobs:
       contents: read
       security-events: write
     steps:
+      - uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2
+        with:
+          egress-policy: audit # まず観測。想定外の宛先が無いことを確認してから block に切り替える(Phase 8)
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
       # ゲート: HIGH 以上で fail。table 出力なのでログで理由が読める。
       # (trivy-action は format=sarif の時 "all severities" でレポートを作り、exit-code も全件に効くので gate と分ける)
       - name: gate (HIGH/CRITICAL, table)
@@ -92,20 +102,53 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2
+        with:
+          egress-policy: audit # まず観測。想定外の宛先が無いことを確認してから block に切り替える(Phase 8)
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
       - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
           fail-on-severity: high
           allow-licenses: MIT, ISC, Apache-2.0, BSD-2-Clause, BSD-3-Clause, 0BSD, CC0-1.0, MPL-2.0, Unlicense, Python-2.0, BlueOak-1.0.0
           comment-summary-in-pr: on-failure
 
+  # Dockerfile / Terraform / workflows / Rego ポリシー。ローカルと同じ scripts/verify.sh --only infra を実行する。
+  infra:
+    name: infra / hadolint, actionlint, zizmor, terraform, trivy config, conftest
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-infra-tools
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.14.8
+          terraform_wrapper: false
+      - uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
+        with:
+          version: v0.74.0
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+      - run: scripts/verify.sh --only infra
+
   security-ok:
     name: security-ok
     if: always()
-    needs: [semgrep, trivy, dependency-review]
+    needs: [semgrep, trivy, dependency-review, infra]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - run: |
-          echo '${{ toJSON(needs) }}'
-          echo '${{ toJSON(needs) }}' | grep -Eq '"result": *"(failure|cancelled)"' && exit 1 || exit 0
+      - uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2
+        with:
+          egress-policy: audit # まず観測。想定外の宛先が無いことを確認してから block に切り替える(Phase 8)
+      - env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS"
+          if echo "$NEEDS" | grep -Eq '"result": *"(failure|cancelled)"'; then exit 1; fi
