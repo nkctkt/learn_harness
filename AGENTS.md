@@ -8,8 +8,8 @@
 
 - 目的: Harness Engineering の学習。アプリより品質ゲートの理解が優先。
 - 構成: `apps/web`(React + Vite)、`apps/api`(Hono)、`services/enricher`(FastAPI)、
-  `services/shortener`(Go、Phase 6)、`infra/`(Docker / Terraform)
-- パッケージ管理: JS は pnpm workspace(依存は完全固定)、Python は uv(`uv.lock`)
+  `services/shortener`(Go、短縮 URL)、`infra/`(Docker / Terraform)、`policies/`(Semgrep / Rego)
+- パッケージ管理: JS は pnpm workspace(依存は完全固定)、Python は uv(`uv.lock`)、Go は modules(`go.sum`)
 
 ## コマンド
 
@@ -17,15 +17,17 @@
 - API 開発: `pnpm --filter @shelf/api dev`(http://localhost:3000)
 - Web 開発: `pnpm --filter @shelf/web dev`(`/api/*` を API へ proxy)
 - Enricher: `cd services/enricher && uv run uvicorn enricher.main:app --port 8000`
+- Shortener: `cd services/shortener && go run ./cmd/shortener`(http://localhost:8081)
 - DB: `docker compose -f infra/docker/compose.yaml up -d`
 - 型検査: `pnpm -r typecheck`
-- 全検証(CI と同一): `scripts/verify.sh`。段を限定するなら `--only ts,py,sec`。変更分だけなら `--changed`
+- 全検証(CI と同一): `scripts/verify.sh`。段を限定するなら `--only ts,py,go,sec,infra`。変更分だけなら `--changed`
 - セキュリティ段のみ: `scripts/verify.sh --only sec`(Semgrep 自作ルール + Trivy)
 
 ## 規約
 
 - 入力は境界(HTTP ハンドラ)で zod / pydantic により検証する。`any` と `# type: ignore` を使わない。
 - 秘密情報をコード・テスト・ログ・コミットに書かない。設定は環境変数経由。
+- 新しいサービス・言語の追加は `/new-service` skill のチェックリストに従う(ゲートの漏れを防ぐ)。
 - 依存追加は `/add-dependency` skill の手順に従う(実在・保守・ライセンス・脆弱性・公開日)。バージョンは完全固定。
 - 外部 URL を取得するコードは `enricher.fetch.fetch_html`(名前解決後の IP で検証)経由のみ。api から直接 fetch しない。
 - SQL は Drizzle のクエリビルダか `sql\`...${x}\``。`sql.raw` に補間・連結を渡さない(Semgrep が拒否する)。

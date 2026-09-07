@@ -8,7 +8,7 @@ path="$(printf '%s' "$input" | jq -r '.tool_input.file_path // empty')"
 [ -z "$path" ] && exit 0
 root="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 case "$path" in
-  *.ts|*.tsx|*.js|*.jsx|*.json|*.jsonc|*.css|*.py) ;;
+  *.ts|*.tsx|*.js|*.jsx|*.json|*.jsonc|*.css|*.py|*.go) ;;
   *) exit 0 ;;
 esac
 out="$("$root/scripts/verify.sh" --fix --files "$path" 2>&1)"

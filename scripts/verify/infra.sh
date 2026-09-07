@@ -13,7 +13,7 @@ unset VIRTUAL_ENV
 echo "[infra]"
 if [ "${VERIFY_MODE}" != all ]; then echo "  - skipped (full mode only)"; exit 0; fi
 
-DOCKERFILES=(apps/api/Dockerfile apps/web/Dockerfile services/enricher/Dockerfile)
+DOCKERFILES=(apps/api/Dockerfile apps/web/Dockerfile services/enricher/Dockerfile services/shortener/Dockerfile)
 have() { command -v "$1" >/dev/null 2>&1; }
 missing() { echo "  - $1 not installed (CI で実行される。brew install $1)"; }
 
