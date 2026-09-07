@@ -6,7 +6,8 @@ source "$(dirname "$0")/_lib.sh"
 cd "$VERIFY_ROOT"
 unset VIRTUAL_ENV  # 他プロジェクトの venv が有効でも uv がプロジェクトの環境を使うように
 echo "[py]"
-PROJECTS=(services/enricher)
+PROJECTS=("${PY_PROJECTS[@]+"${PY_PROJECTS[@]}"}")
+[ ${#PROJECTS[@]} -eq 0 ] && { echo "  - no python projects (targets.sh)"; exit 0; }
 
 if [ $# -gt 0 ]; then
   files=(); while IFS= read -r _l; do files+=("$_l"); done < <(filter_files '\.(py|pyi)$' "$@")

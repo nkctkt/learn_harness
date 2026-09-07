@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# 各言語スクリプト共通のヘルパー。
+# 各言語スクリプト共通のヘルパー。対象一覧は targets.sh(プロジェクト固有)。
+# shellcheck source=targets.sh
+source "$(dirname "${BASH_SOURCE[0]}")/targets.sh"
 STEP_FAILED=0
 step() {
   # step <name> <cmd...>: 実行して結果を 1 行で報告。失敗しても続行する。

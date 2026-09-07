@@ -13,19 +13,18 @@ unset VIRTUAL_ENV
 echo "[infra]"
 if [ "${VERIFY_MODE}" != all ]; then echo "  - skipped (full mode only)"; exit 0; fi
 
-DOCKERFILES=(apps/api/Dockerfile apps/web/Dockerfile services/enricher/Dockerfile services/shortener/Dockerfile)
 have() { command -v "$1" >/dev/null 2>&1; }
 missing() { echo "  - $1 not installed (CI で実行される。brew install $1)"; }
 
-if have hadolint; then step "hadolint (Dockerfiles)" hadolint "${DOCKERFILES[@]}"; else missing hadolint; fi
+if have hadolint && [ ${#DOCKERFILES[@]} -gt 0 ]; then step "hadolint (Dockerfiles)" hadolint "${DOCKERFILES[@]}"; else missing hadolint; fi
 if have actionlint; then step "actionlint (.github/workflows)" actionlint; else missing actionlint; fi
 if have uv; then step "zizmor (workflow security)" uv tool run --quiet zizmor --no-progress --persona regular --min-severity medium .github/workflows; else missing uv; fi
 
-if have terraform; then
-  step "terraform fmt -check" terraform -chdir=infra/terraform fmt -check -recursive
-  [ -d infra/terraform/.terraform ] || step "terraform init (providers)" terraform -chdir=infra/terraform init -backend=false -input=false -no-color
-  step "terraform validate" terraform -chdir=infra/terraform validate -no-color
-else missing terraform; fi
+if have terraform && [ -n "${TERRAFORM_DIR:-}" ] && [ -d "$TERRAFORM_DIR" ]; then
+  step "terraform fmt -check" terraform -chdir="$TERRAFORM_DIR" fmt -check -recursive
+  [ -d "$TERRAFORM_DIR/.terraform" ] || step "terraform init (providers)" terraform -chdir="$TERRAFORM_DIR" init -backend=false -input=false -no-color
+  step "terraform validate" terraform -chdir="$TERRAFORM_DIR" validate -no-color
+else echo "  - terraform: skipped (not installed or no TERRAFORM_DIR)"; fi
 
 if have trivy; then
   # trivy config は単一ターゲットしか受けないので repo 全体を渡す(Dockerfile / Terraform / compose を自動検出)
@@ -35,7 +34,7 @@ else missing trivy; fi
 if have conftest; then
   step "conftest verify (Rego ルール自体のテスト)" conftest verify --policy policies/rego
   step "conftest: workflows" conftest test --policy policies/rego --namespace github_workflow .github/workflows/*.yml
-  step "conftest: package.json (完全固定)" conftest test --policy policies/rego --namespace package_json package.json apps/api/package.json apps/web/package.json
-  step "conftest: terraform" conftest test --policy policies/rego --namespace terraform --parser hcl2 infra/terraform/main.tf infra/terraform/versions.tf
+  step "conftest: package.json (完全固定)" conftest test --policy policies/rego --namespace package_json package.json "${TS_PACKAGES[@]/%//package.json}"
+  [ -n "${TERRAFORM_DIR:-}" ] && [ -d "$TERRAFORM_DIR" ] && step "conftest: terraform" conftest test --policy policies/rego --namespace terraform --parser hcl2 "$TERRAFORM_DIR"/*.tf
 else missing conftest; fi
 exit $STEP_FAILED

@@ -7,7 +7,8 @@ set -uo pipefail
 source "$(dirname "$0")/_lib.sh"
 cd "$VERIFY_ROOT"
 echo "[go]"
-MODULES=(services/shortener)
+MODULES=("${GO_MODULES[@]+"${GO_MODULES[@]}"}")
+[ ${#MODULES[@]} -eq 0 ] && { echo "  - no go modules (targets.sh)"; exit 0; }
 command -v go >/dev/null 2>&1 || { echo "  - go not installed (CI で実行される)"; exit 0; }
 export PATH="$PATH:$(go env GOPATH)/bin"
 
