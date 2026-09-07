@@ -99,3 +99,20 @@ Hook 層には入れない。Dockerfile や Terraform の編集は頻度が低�
 - **Claude Code の sandbox(ネットワーク allowlist、credential deny)は導入していない。** pnpm / uv / Docker / gh が使う宛先を洗い出してから入れないと、開発が止まる。harden-runner の audit ログ(CI 側の egress 一覧)を参考に Phase 8 で設計する。
 - guard-bash は `rm -rf` を含む自己テストコマンドを正しく拒否した(4 件目の「誤検知ではない検知」)。一時ファイルは個別に消す。
 - Terraform の plan-json に対するポリシー(実際の差分を見る)は、apply 先が無いので扱わない。
+
+## 8. 追記: CI の Trivy image スキャンが 3 image 全てで落ちた
+
+ローカルでは `trivy config`(Dockerfile の書き方)しか回していなかった。CI でビルド済み image を `trivy image` にかけると、**我々の lockfile には無い** 既知 CVE が出た。
+
+| image | 検出 | 由来 | 対処 |
+|---|---|---|---|
+| api(node:24-alpine) | libcrypto3 HIGH ×1、npm 同梱の tar / brace-expansion / ip-address HIGH ×3 | ベース image の OS パッケージと、Node 公式 image に同梱される npm の依存 | `apk upgrade`、実行時に不要な npm / yarn を削除 |
+| web(nginx-unprivileged:1.27-alpine) | HIGH 30 / CRITICAL 2(openssl、c-ares、libexpat …) | 1.27 系のベースが alpine 3.21 で古い | 1.29-alpine に更新 + `apk upgrade`(root に戻して実行し、`USER 101` に戻す) |
+| enricher(python:3.13-slim) | setuptools HIGH ×1(+1) | Python 公式 image 同梱の pip / setuptools | 実行時に不要な pip / setuptools / wheel を削除 |
+
+学び:
+
+- **`trivy fs`(lockfile)と `trivy image`(ビルド済み)は見ている物が違う。** ベース image 由来の CVE は lockfile に現れない。両方が要る。
+- **ベース image は「依存」である。** Dependabot の docker ecosystem が同時に nginx 1.31 / node 26 / python 3.14 の PR を開いた(#6〜#9)。cooldown 7 日は効いているが、major 更新なので中身を見てから取り込む。
+- **実行時に不要な物は image から外す**(npm、pip、setuptools)。CVE の数が減るだけでなく、侵入後にできることも減る。
+- CI の shellcheck は `A && B || C` を SC2015 で拒否した(ローカルの actionlint は通した。同梱 shellcheck のバージョン差)。`if ... then exit 1; fi` に書き換えた。**同じツール名でも CI とローカルでバージョンを揃えないと結果が揃わない**(Exercise 05 の trivy と同じ教訓)。
