@@ -14,11 +14,15 @@
     "verify": "scripts/verify.sh",
     "lint:types": "eslint .",
     "prepare": "lefthook install",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "knip": "knip",
+    "arch": "depcruise --config .dependency-cruiser.cjs apps/api/src apps/web/src"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.11",
+    "dependency-cruiser": "18.2.0",
     "eslint": "10.9.1",
+    "knip": "6.33.0",
     "lefthook": "2.1.12",
     "typescript": "6.0.3",
     "typescript-eslint": "8.68.0"

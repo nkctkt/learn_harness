@@ -31,6 +31,8 @@ for proj in "${PROJECTS[@]}"; do
   step "basedpyright ($proj)" uv run --quiet basedpyright
   # pytest は pyproject の addopts でカバレッジを常に出す(数十 ms)。--files(単一ファイル編集)では走らせない。
   [ "${VERIFY_MODE}" != files ] && step "pytest ($proj)" uv run --quiet pytest
+  # アーキテクチャ規約(import-linter)。全体モードのみ。
+  [ "${VERIFY_MODE}" = all ] && step "import-linter ($proj)" uv run --quiet lint-imports
   popd >/dev/null
 done
 exit $STEP_FAILED
