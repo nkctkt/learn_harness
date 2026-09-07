@@ -5,7 +5,7 @@
 #   scripts/verify.sh --changed       # HEAD からの変更ファイルのみ(Stop hook / pre-commit で使う)
 #   scripts/verify.sh --files a b c   # 指定ファイルのみ(PostToolUse hook で使う)
 #   scripts/verify.sh --fix ...       # formatter / lint の自動修正を適用する(hook 用。CI では使わない)
-#   scripts/verify.sh --only ts,py    # 言語を限定
+#   scripts/verify.sh --only ts,py    # 段を限定(ts / py / sec)
 #
 # 設計原則: 同じスクリプトを「範囲だけ変えて」全層から呼ぶ。Hook は速い部分集合、CI は全体。
 # 各ステップは失敗しても止まらず最後まで走り、最後にまとめて非 0 で終了する(1 回で全部の指摘を返す)。
@@ -47,6 +47,7 @@ run_lang() {
 }
 run_lang ts
 run_lang py
+run_lang sec
 
 echo
 if [ ${#FAILED[@]} -gt 0 ]; then

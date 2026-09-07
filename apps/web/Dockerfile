@@ -13,4 +13,6 @@ RUN pnpm --filter @shelf/web build
 FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
 COPY infra/docker/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /repo/apps/web/dist /usr/share/nginx/html
+# nginx-unprivileged は既定で uid 101 で動くが、スキャナは USER 命令の有無で判定するので明示する
+USER 101
 EXPOSE 8080

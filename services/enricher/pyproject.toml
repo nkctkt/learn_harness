@@ -13,7 +13,9 @@ dependencies = [
 dev = [
     "basedpyright>=1.39.10",
     "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
     "pytest-cov>=7.1.0",
+    "respx>=0.23.1",
     "ruff>=0.16.6",
 ]
 
@@ -27,7 +29,7 @@ target-version = "py313"
 select = ["E", "W", "F", "I", "UP", "B", "S", "N", "SIM", "RUF", "PGH"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101"]  # テストでの assert は許可
+"tests/**" = ["S101", "S104"]  # テストでの assert と、拒否対象としての 0.0.0.0 リテラルは許可
 
 [tool.basedpyright]
 pythonVersion = "3.13"
@@ -38,3 +40,4 @@ reportMissingTypeStubs = false
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q --cov=enricher --cov-report=term-missing:skip-covered --cov-report=json:coverage.json"
+asyncio_mode = "auto"
