@@ -76,14 +76,17 @@ jobs:
           exit-code: "1"
           format: table
           skip-dirs: node_modules,.venv
-      # レポート: 全 severity を SARIF で Security タブへ。merge はブロックしない。
-      - name: report (all severities, sarif)
+      # レポート: SARIF で Security タブへ。PR 時は HIGH 以上だけにする。
+      # code scanning は PR の差分にある alert をレビューコメントにし、Rulesets の「会話の解決必須」で
+      # LOW ですら merge を止めてしまった(Exercise 07)。全 severity の可視化は Nightly(PR ではない)に任せる。
+      - name: report (HIGH/CRITICAL, sarif)
         if: always()
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           version: v0.74.0
           scan-type: fs
           scanners: vuln,secret,misconfig
+          severity: HIGH,CRITICAL
           exit-code: "0"
           format: sarif
           output: trivy.sarif
