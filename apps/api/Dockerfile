@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 # ---- build: 全依存で tsc を実行し、JS だけを成果物にする ----
-FROM node:24-alpine AS build
+FROM node:26-alpine AS build
 RUN corepack enable
 WORKDIR /repo
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
@@ -11,7 +11,7 @@ COPY apps/api ./apps/api
 RUN pnpm --filter @shelf/api build
 
 # ---- deps: 実行時依存だけを解決する(devDependencies を image に入れない) ----
-FROM node:24-alpine AS deps
+FROM node:26-alpine AS deps
 RUN corepack enable
 WORKDIR /repo
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
@@ -20,7 +20,7 @@ RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile --ignore-scripts --filter @shelf/api --prod
 
 # ---- runtime: 非 root、JS と migration と実行時依存のみ ----
-FROM node:24-alpine AS runtime
+FROM node:26-alpine AS runtime
 ENV NODE_ENV=production PORT=3000
 # ベース image 由来の既知 CVE を減らす(Exercise 06): OS パッケージを最新に、実行時に不要な npm を取り除く。
 # npm 同梱の依存(tar / brace-expansion 等)は我々の lockfile 外で、Trivy image スキャンだけが見つける。
