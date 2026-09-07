@@ -7,6 +7,7 @@ export const links = pgTable(
     href: text("href").notNull(),
     host: text("host").notNull(),
     title: text("title"),
+    shortCode: text("short_code"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("links_href_unique").on(t.href)],

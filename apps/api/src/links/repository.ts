@@ -5,7 +5,12 @@ import { type Link, links } from "../db/schema.js";
 export type LinkRepository = {
   list(): Promise<Link[]>;
   findByHref(href: string): Promise<Link | undefined>;
-  create(input: { href: string; host: string; title?: string | null }): Promise<Link>;
+  create(input: {
+    href: string;
+    host: string;
+    title?: string | null;
+    shortCode?: string | null;
+  }): Promise<Link>;
 };
 
 /** Drizzle のクエリビルダを使う。値は常にパラメータとして渡され、SQL に文字列連結されない。 */
@@ -21,7 +26,12 @@ export function createLinkRepository(db: Db): LinkRepository {
     async create(input) {
       const rows = await db
         .insert(links)
-        .values({ href: input.href, host: input.host, title: input.title ?? null })
+        .values({
+          href: input.href,
+          host: input.host,
+          title: input.title ?? null,
+          shortCode: input.shortCode ?? null,
+        })
         .returning();
       const row = rows[0];
       if (!row) throw new Error("insert returned no row");
