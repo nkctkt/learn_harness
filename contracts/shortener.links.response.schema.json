@@ -12,6 +12,9 @@
       "format": "uri"
     }
   },
-  "required": ["code", "target"],
+  "required": [
+    "code",
+    "target"
+  ],
   "additionalProperties": {}
 }
