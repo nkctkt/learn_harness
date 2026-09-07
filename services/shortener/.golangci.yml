@@ -1,0 +1,31 @@
+# golangci-lint v2。gofmt / goimports は formatters、静的解析は linters。
+# 責務: go vet(コンパイラ隣接の明白なバグ)+ staticcheck(より広いバグ・非推奨)+ セキュリティ(gosec)+ エラー処理(errcheck)。
+version: "2"
+run:
+  timeout: 3m
+formatters:
+  enable: [gofmt, goimports]
+linters:
+  default: standard # errcheck, govet, ineffassign, staticcheck, unused
+  enable:
+    - gosec
+    - bodyclose
+    - errorlint
+    - gocritic
+    - misspell
+    - nolintlint
+    - revive
+    - unconvert
+    - unparam
+  settings:
+    nolintlint:
+      require-explanation: true # 抑制には理由を必須にする(AGENTS.md の方針)
+      require-specific: true
+    revive:
+      rules:
+        - name: exported
+          arguments: [checkPrivateReceivers]
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters: [gosec, bodyclose, errcheck] # テストの簡潔さを優先
