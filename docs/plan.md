@@ -201,7 +201,8 @@ Nightly         時間      高       不可      重いスキャン、ドリフ
 | 4 | セキュリティ | L3 | Semgrep 自作ルール(taint)+ p/default、Trivy fs、dependency-review、CodeQL / Scorecard(Nightly)、pnpm minimumReleaseAge / trustPolicy、Dependabot cooldown、`/add-dependency` skill(Rego は Phase 5 へ)、enricher の SSRF 対策実装 | 文字列連結 SQL、検証なし SSRF、脆弱依存、ダミー鍵 | 既知の脆弱パターン、既知 CVE、公開直後の悪性版 |
 | 5 | Container / IaC / Actions / Policy | L3 | Hadolint、Trivy config / image、actionlint、zizmor、Conftest / Rego(workflows・package.json・Terraform、ルールの unit test 付き)、harden-runner(audit)、Terraform module、checksum 固定の composite action(sandbox は Phase 8 へ) | root Dockerfile、公開 S3、全開 SSH、IAM `*`、`pull_request_target`、SHA 未固定、`^` 依存 | 実行環境の設定不備、CI 乗っ取り、規約の機械検査 |
 | 6 | Go 追加 + テンプレート化 | L4 | shortener(distroless)、Go toolchain(gofmt / vet / golangci-lint / `-race` / govulncheck)、`scripts/verify/go.sh`、CI go job、`/new-service` skill(reusable workflow 化は Phase 8 の `templates/` と一緒に) | data race、`go vet` printf、errcheck、gosec、到達可能な脆弱依存 | 3 言語目を何分で乗せられるか(実測は Exercise 07) |
-| 7 | テストの信頼性 + フィードバックループ | L5 入口 | mutation test、test-reviewer subagent、`/fix-ci` skill、arch rules、knip、Playwright smoke(UI にフォームが付いてから) | 同語反復テスト、レイヤー違反 | テストの質、構造の腐敗 |
+| 7 | テストの信頼性 + フィードバックループ | L5 入口 | Stryker / mutmut(Nightly 週次、報告のみ)、dependency-cruiser / import-linter(error)、knip(warn)、test-reviewer subagent、`/fix-ci` skill、PR 時の SARIF を HIGH+ に限定 | 同語反復テスト、レイヤー違反、未使用依存 | テストの質、構造の腐敗 |
+| 7b | アプリ配線 + E2E | - | api → enricher(title 補完)/ shortener(短縮コード)の配線、web のフォーム、Playwright smoke(Phase 8 の前に別 PR) | サービス間の契約不一致 | 結合の劣化 |
 | 8 | Supply chain + 一般化 | L4 | SBOM、provenance、release workflow、`templates/`、copier 化、docs 完成 | - | 出荷物の追跡可能性 |
 
 Phase 1〜4 が本質。ここまでで 7 割の価値が出る。
