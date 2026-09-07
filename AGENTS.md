@@ -14,12 +14,13 @@
 ## コマンド
 
 - JS 依存: `pnpm install --frozen-lockfile`
-- API 開発: `pnpm --filter @shelf/api dev`(http://localhost:3000)
+- API 開発: `pnpm --filter @shelf/api dev`(http://localhost:3000)。`DATABASE_URL` 必須、`ENRICHER_URL` / `SHORTENER_URL` は任意(無ければ noop)
 - Web 開発: `pnpm --filter @shelf/web dev`(`/api/*` を API へ proxy)
 - Enricher: `cd services/enricher && uv run uvicorn enricher.main:app --port 8000`
 - Shortener: `cd services/shortener && go run ./cmd/shortener`(http://localhost:8081)
 - DB: `docker compose -f infra/docker/compose.yaml up -d`
 - 型検査: `pnpm -r typecheck`
+- UI smoke(Playwright、API はモック): `pnpm --filter @shelf/web test:e2e`。全サービス結合は `docker compose -f infra/docker/compose.yaml up --build`
 - 全検証(CI と同一): `scripts/verify.sh`。段を限定するなら `--only ts,py,go,sec,infra`。変更分だけなら `--changed`
 - セキュリティ段のみ: `scripts/verify.sh --only sec`(Semgrep 自作ルール + Trivy)
 
@@ -30,6 +31,7 @@
 - 新しいサービス・言語の追加は `/new-service` skill のチェックリストに従う(ゲートの漏れを防ぐ)。
 - 依存追加は `/add-dependency` skill の手順に従う(実在・保守・ライセンス・脆弱性・公開日)。バージョンは完全固定。
 - 外部 URL を取得するコードは `enricher.fetch.fetch_html`(名前解決後の IP で検証)経由のみ。api から直接 fetch しない。
+- 他サービスの応答は `apps/api/src/links/clients.ts` のように zod で検証し、失敗は undefined に畳んでログに残す(補助機能で保存を止めない)。
 - SQL は Drizzle のクエリビルダか `sql\`...${x}\``。`sql.raw` に補間・連結を渡さない(Semgrep が拒否する)。
 - 意図的な欠陥を作る演習では、ファイル先頭に `// EXERCISE:` / `# EXERCISE:` コメントを付け、
   `docs/exercises/` に記録してから修正する。
