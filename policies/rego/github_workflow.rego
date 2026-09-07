@@ -17,14 +17,37 @@ deny contains msg if {
 }
 
 # 2) pull_request_target は fork の PR に write 権限と secrets を渡しうる。使わない。
+#    注意: YAML 1.1 では `on` キーが真偽値 true として読まれ、conftest では文字列キー "true" になる。両方を見る。
+triggers := t if {
+	t := input.on
+} else := t if {
+	t := input["true"]
+} else := t if {
+	t := input[true]
+} else := {}
+
 deny contains msg if {
-	input.on.pull_request_target
+	is_object(triggers)
+	triggers.pull_request_target
 	msg := "pull_request_target は禁止です。pull_request を使い、必要なら workflow_run で分離してください"
 }
 
 deny contains msg if {
-	some trigger in input.on
+	is_object(triggers)
+	some key, _ in triggers
+	key == "pull_request_target"
+	msg := "pull_request_target は禁止です。pull_request を使い、必要なら workflow_run で分離してください"
+}
+
+deny contains msg if {
+	is_array(triggers)
+	some trigger in triggers
 	trigger == "pull_request_target"
+	msg := "pull_request_target は禁止です。pull_request を使い、必要なら workflow_run で分離してください"
+}
+
+deny contains msg if {
+	triggers == "pull_request_target"
 	msg := "pull_request_target は禁止です。pull_request を使い、必要なら workflow_run で分離してください"
 }
 

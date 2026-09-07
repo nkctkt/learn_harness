@@ -25,6 +25,19 @@ test_pull_request_target_denied if {
 	contains(msg, "pull_request_target")
 }
 
+# YAML 1.1 パーサは `on:` を true キーにする。その形でも検出できること。
+test_pull_request_target_denied_with_boolean_on_key if {
+	bad := {"jobs": {}, "true": {"pull_request_target": {"types": ["opened"]}}, "permissions": {"contents": "read"}}
+	some msg in deny with input as bad
+	contains(msg, "pull_request_target")
+}
+
+test_pull_request_target_in_list_denied if {
+	bad := object.union(pinned, {"on": ["push", "pull_request_target"]})
+	some msg in deny with input as bad
+	contains(msg, "pull_request_target")
+}
+
 test_missing_permissions_denied if {
 	bad := object.remove(pinned, ["permissions"])
 	some msg in deny with input as bad
