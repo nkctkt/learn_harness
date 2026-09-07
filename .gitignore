@@ -44,3 +44,5 @@ reports/
 
 # mutmut
 mutants/
+playwright-report/
+test-results/

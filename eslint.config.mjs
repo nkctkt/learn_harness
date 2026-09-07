@@ -15,6 +15,8 @@ export default tseslint.config(
       "**/vite.config.ts",
       "**/vitest.config.ts",
       "**/.stryker-tmp/**",
+      "**/e2e/**",
+      "**/playwright.config.ts",
       "**/drizzle.config.ts",
     ],
   },
