@@ -10,7 +10,8 @@
     "test:coverage": "INTEGRATION=1 vitest run --coverage",
     "test:integration": "INTEGRATION=1 vitest run",
     "db:generate": "drizzle-kit generate",
-    "build": "tsc -p tsconfig.build.json"
+    "build": "tsc -p tsconfig.build.json",
+    "test:mutation": "stryker run"
   },
   "dependencies": {
     "@hono/node-server": "2.1.1",
@@ -20,6 +21,8 @@
     "zod": "4.5.4"
   },
   "devDependencies": {
+    "@stryker-mutator/core": "10.0.0",
+    "@stryker-mutator/vitest-runner": "10.0.0",
     "@testcontainers/postgresql": "12.1.0",
     "@types/node": "26.4.0",
     "@vitest/coverage-v8": "4.1.11",

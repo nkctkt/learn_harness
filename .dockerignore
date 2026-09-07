@@ -6,3 +6,6 @@
 .git
 .claude
 docs
+**/.stryker-tmp
+**/mutants
+**/reports

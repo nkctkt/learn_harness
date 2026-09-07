@@ -12,6 +12,8 @@ dependencies = [
 [dependency-groups]
 dev = [
     "basedpyright>=1.39.10",
+    "import-linter>=2.15",
+    "mutmut>=3.7.0",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
     "pytest-cov>=7.1.0",
@@ -22,6 +24,7 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py313"
+extend-exclude = ["mutants"]  # mutmut の生成物
 
 [tool.ruff.lint]
 # E/W: pycodestyle, F: pyflakes, I: isort, UP: pyupgrade, B: bugbear, S: bandit(セキュリティ),
@@ -35,9 +38,31 @@ select = ["E", "W", "F", "I", "UP", "B", "S", "N", "SIM", "RUF", "PGH"]
 pythonVersion = "3.13"
 typeCheckingMode = "strict"
 include = ["enricher", "tests"]
+exclude = ["mutants"]
 reportMissingTypeStubs = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q --cov=enricher --cov-report=term-missing:skip-covered --cov-report=json:coverage.json"
 asyncio_mode = "auto"
+
+# アーキテクチャ規約(import-linter)。og / safe_url は純粋モジュールで、上位(fetch / main)を import しない。
+[tool.importlinter]
+root_package = "enricher"
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "layers: main -> fetch -> safe_url; og は独立"
+type = "layers"
+layers = ["enricher.main", "enricher.fetch", "enricher.safe_url"]
+
+[[tool.importlinter.contracts]]
+name = "og はネットワーク層を知らない"
+type = "forbidden"
+source_modules = ["enricher.og"]
+forbidden_modules = ["enricher.fetch", "enricher.safe_url", "enricher.main", "httpx"]
+
+# Mutation testing(mutmut 3)。Nightly 週次のみ。
+[tool.mutmut]
+paths_to_mutate = ["enricher/"]
+tests_dir = ["tests/"]
