@@ -13,3 +13,13 @@
 2026-09-08T01:40:41Z	GATE_APPROVED	plan
 2026-09-08T01:40:41Z	STAGE_SET	inception -> construction
 2026-09-08T01:40:41Z	UNIT_STARTED	u1-event-sink
+2026-09-08T01:42:57Z	UNIT_DONE	u1-event-sink
+2026-09-08T01:42:57Z	UNIT_STARTED	u2-hook-wiring
+2026-09-08T01:47:19Z	HOOK_ASK	guard-edit: ハーネス自体を変更しようとしています(HITL-4): .claude/hooks/guard-plan-approval.sh。意図した変更か確認してください
+2026-09-08T01:49:21Z	HOOK_ASK	guard-edit: ハーネス自体を変更しようとしています(HITL-4): .claude/hooks/guard-secrets.sh。意図した変更か確認してください。
+2026-09-08T01:50:31Z	HOOK_ASK	guard-edit: ハーネス自体を変更しようとしています(HITL-4): .claude/hooks/stop-verify.sh。意図した変更か確認してください。
+2026-09-08T01:54:33Z	HOOK_ASK	guard-edit: ハーネス自体を変更しようとしています(HITL-4): .claude/hooks/post-edit-check.sh。意図した変更か確認してください。
+2026-09-08T01:57:16Z	HOOK_ASK	guard-bash: ハーネス自体(hooks / CI / policies / lefthook)を Bash で書き換えようとしています。意図した変更か確認してください。
+2026-09-08T01:57:31Z	HOOK_ASK	guard-edit: ハーネス自体を変更しようとしています(HITL-4): .claude/hooks/stop-verify.sh。意図した変更か確認してください。
+2026-09-08T01:58:03Z	HOOK_ASK	guard-bash: ハーネス自体(hooks / CI / policies / lefthook)を Bash で書き換えようとしています。意図した変更か確認してください。
+2026-09-08T01:58:19Z	HOOK_ASK	guard-bash: intent の受領証・状態・監査ログを直接操作しようとしています。承認は人間の応答(hook が記録)でのみ成立します。意図した操作か確認してください。
