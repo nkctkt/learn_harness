@@ -1,6 +1,6 @@
 # Intent: 260908-harness-metrics
 
-- Status: active
+- Status: done
 - Scope: harness
 - Stage: handoff
 - Gate intent: approved 2026-09-08T01:32:25Z

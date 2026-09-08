@@ -17,3 +17,5 @@ paths:
 - `verify.sh` は「同じスクリプト、違う範囲」。段を足す時は `--files` / `--changed` / 全体の 3 モードを実装し、未導入ツールは skip を明示して exit 0。
 - workflow / settings.json / policies の変更は PR に理由を書く(AGENTS.md)。action は SHA 固定(Rego が落とす)。
 - リポジトリ側を変えたら `templates/harness/template/` を同期する(同一ファイルはコピー、固有値は Jinja)。
+- guard-bash はパスの **位置** を見ない。`/tmp` に取ったリポジトリのコピーで `.claude/hooks/` を `sed -i` しても ask になり、active intent の audit.log に記録される(subagent の mutation テストで 22 件)。コピーで作業する時は hook を通らない方法(Read / Write ツール、`intent.sh` を無効化した環境)を使うか、記録に混ざることを前提に読む。
+- テンプレートへの `cp` も guard-bash §8 の ask になる(パスに `.claude/hooks/` を含むため)。同期は 1 コマンドにまとめる(improvement-plan M1 で自動化予定)。
