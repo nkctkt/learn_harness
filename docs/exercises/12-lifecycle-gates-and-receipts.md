@@ -35,7 +35,7 @@ AWS の AI-DLC(`../aidlc-workflows` v2.7)はこれを 5 フェーズ 33 ステ�
 | L2 | `/intent` `/plan-units` `/adr` `/build-unit` `/create-pr` `/release` `/incident` `/retro` | 各タスクの手順とゲートの出し方 | 手順を飛ばさないこと |
 | 助言 | `plan-reviewer` subagent | 計画の穴(AC の取りこぼし、walking skeleton、検証不能な DoD、未申告の境界) | block(承認は人間) |
 | CI | `verify.sh --only docs`(`security.yml` infra job) | 受領証の順序、state と audit の一致、必須節、unit DAG の循環 | 順序が正しい改竄 |
-| テスト | `scripts/tests/{intent,hooks}.test.sh`(41 + 35 assertions、一時ディレクトリ) | intent.sh と hook の振る舞い | - |
+| テスト | `scripts/tests/{intent,hooks,harness-shape}.test.sh`(41 + 35 + 21 assertions、一時ディレクトリ) | intent.sh と hook の振る舞い、skill / rules / agent の形、テンプレートのドリフト | - |
 
 hook 3 本は全て「intent が無ければ何もしない」。小さな修正に儀式を強いると、Agent(と人間)は intent を作らない方向に学習する。
 
@@ -60,7 +60,7 @@ gate present intent → gate approve intent
 
 `gate reject` → `gate present` をやり直した後、**古い HUMAN_TURN は再利用できない**(提示より前の応答は数えない)ことも確認。
 
-### 3.3 記録を改竄する(`intent.test.sh` の check 4 種)
+### 3.3 記録を改竄する(`intent.test.sh` の check 5 種)
 
 | 改竄 | `intent.sh check` |
 |---|---|
