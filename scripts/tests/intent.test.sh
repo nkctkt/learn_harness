@@ -75,12 +75,39 @@ expect_ok "note を追記" "$I" note Deviations "skipped X because Y"
 awk '/^## Deviations/{f=1;next} /^## /{f=0} f' "$D/memory.md" | grep -q 'skipped X' && ok "note は該当節の末尾に入る" || ng "note の位置が違う" "$(cat "$D/memory.md")"
 expect_fail "未知の見出しは拒否" "見出しは" "$I" note Random "x"
 
+# --- event / metrics(Phase 10: ハーネスの判定を記録して数える)-------------------------------------------
+export HARNESS_METRICS_LOG="$TMP/metrics.log"
+expect_ok   "event は active intent の audit.log に追記する" "$I" event HOOK_DENY "guard-bash: rm"
+grep -q '	HOOK_DENY	guard-bash: rm$' "$D/audit.log" && ok "event は TSV(ts / event / detail)で書かれる" || ng "event の形式" "$(tail -n2 "$D/audit.log")"
+expect_fail "event 名は大文字英字と _ のみ" "event 名" "$I" event bad-name "x"
+expect_fail "event は detail が必要" "detail" "$I" event HOOK_DENY
+for e in "HOOK_DENY guard-edit: y" "HOOK_ASK guard-bash: z" "STOP_BLOCK ts" "POST_EDIT_FAIL apps/api/src/a.ts"; do "$I" event $e >/dev/null; done
+expect_ok   "check: hook イベントを含む audit.log を通す(受領証の順序検査に影響しない)" "$I" check
+out="$("$I" metrics)"
+printf '%s\n' "$out" | grep -Eq '^HOOK_DENY	2$'      && ok "metrics: HOOK_DENY を数える"      || ng "metrics: HOOK_DENY" "$out"
+printf '%s\n' "$out" | grep -Eq '^HOOK_ASK	1$'       && ok "metrics: HOOK_ASK を数える"       || ng "metrics: HOOK_ASK" "$out"
+printf '%s\n' "$out" | grep -Eq '^STOP_BLOCK	1$'     && ok "metrics: STOP_BLOCK を数える"     || ng "metrics: STOP_BLOCK" "$out"
+printf '%s\n' "$out" | grep -Eq '^POST_EDIT_FAIL	1$' && ok "metrics: POST_EDIT_FAIL を数える" || ng "metrics: POST_EDIT_FAIL" "$out"
+printf '%s\n' "$out" | grep -Eq '^HUMAN_TURN	[1-9]'  && ok "metrics: HUMAN_TURN を数える"     || ng "metrics: HUMAN_TURN" "$out"
+printf '%s\n' "$out" | grep -Eq '^GATE_REJECTED	1$'  && ok "metrics: GATE_REJECTED を数える"  || ng "metrics: GATE_REJECTED" "$out"
+printf '%s\n' "$out" | grep -Eq '^elapsed_sec	[0-9]+$' && ok "metrics: 経過秒を出す(未 close は現在まで)" || ng "metrics: elapsed" "$out"
+printf '2026-09-08T00:00:00Z\tINTENT_CREATED\tscope=feature\n2026-09-08T01:30:00Z\tINTENT_CLOSED\tcompleted\n' > "$TMP/fixed.log"
+out="$("$I" metrics --file "$TMP/fixed.log")"
+printf '%s\n' "$out" | grep -Eq '^elapsed_sec	5400$' && ok "metrics: iso_to_epoch(00:00 → 01:30 = 5400 秒、GNU / BSD date 両対応)" || ng "metrics: elapsed 計算" "$out"
+grep -qx '.claude/metrics.log' "$ROOT/.gitignore" && ok ".gitignore に .claude/metrics.log がある" || ng ".gitignore に .claude/metrics.log が無い"
+
 # --- close ----------------------------------------------------------------------------------------
 expect_fail "retro.md が無いと close できない" "retro.md" "$I" close
 echo "# retro" > "$D/retro.md"
 expect_ok "retro 後に close" "$I" close
 expect_ok "close 後は new できる" "$I" new next --scope bugfix
 "$I" close --abandon >/dev/null
+
+# --- event / metrics: intent が無い時はローカルの metrics.log(Git 追跡外)に書く --------------------------
+expect_ok "event は intent が無ければ metrics.log に追記する" "$I" event HOOK_DENY "guard-bash: no intent"
+grep -q '	HOOK_DENY	guard-bash: no intent$' "$HARNESS_METRICS_LOG" && ok "metrics.log も同じ TSV 形式" || ng "metrics.log の形式" "$(cat "$HARNESS_METRICS_LOG" 2>&1)"
+out="$("$I" metrics)"   # パイプに直接つなぐと grep -q の早期終了 + pipefail で偽の失敗になる
+printf '%s\n' "$out" | grep -Eq '^HOOK_DENY	1$' && ok "metrics は intent が無ければ metrics.log を読む" || ng "metrics の読み先" "$out"
 
 # --- check(CI): 正常な記録は通り、改竄は落ちる ---------------------------------------------------------
 expect_ok "check: 正常な記録は通る" "$I" check
