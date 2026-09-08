@@ -13,6 +13,7 @@ AI Coding Agent 時代のコード品質保証(Quality Gate / CI / Claude Code H
 6. [docs/lifecycle.md](docs/lifecycle.md) — 開発ライフサイクルの各タスク(intent → plan → build → PR → release / incident → retro)と、支援 / 強制する要素(AI-DLC 参照)
 7. `docs/exercises/00〜12` — 意図的欠陥 → 検出 → 原因 → 修正 の記録(本文の根拠)
 8. [templates/README.md](templates/README.md) — 新規プロジェクトへの適用手順(copier)
+9. [docs/improvement-plan.md](docs/improvement-plan.md) — 「生産性と品質の両立」の観点での診断と改善計画(Phase 10 の入力)
 
 元になった調査: `../ai_driven_development/`(2026-09-03)。Phase 9 のライフサイクル層は AWS の AI-DLC(`../aidlc-workflows`)を参照(`docs/plan.md` §12)。
 
