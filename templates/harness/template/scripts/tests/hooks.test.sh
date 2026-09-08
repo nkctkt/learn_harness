@@ -5,7 +5,7 @@
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 TMP="$(mktemp -d)"; trap 'rm -r "$TMP"' EXIT     # allow-secret: 一時ディレクトリの後始末
-export INTENTS_DIR="$TMP/intents" CLAUDE_PROJECT_DIR="$ROOT"; mkdir -p "$INTENTS_DIR"
+export INTENTS_DIR="$TMP/intents" CLAUDE_PROJECT_DIR="$ROOT" HARNESS_METRICS_LOG="$TMP/metrics.log"; mkdir -p "$INTENTS_DIR"   # 本物の .claude/metrics.log を汚さない
 H="$ROOT/.claude/hooks"; I="$ROOT/scripts/intent.sh"
 fail=0; n=0
 ok() { n=$((n+1)); echo "  ✔ $1"; }
@@ -56,6 +56,8 @@ expect ask  "guard-bash: audit.log への追記" guard-bash.sh "$(bash_json "ech
 expect ask  "guard-bash: Agent 自身による human-turn" guard-bash.sh "$(bash_json 'scripts/intent.sh human-turn me')"
 expect ask  "guard-bash: Agent 自身による event(判定の捏造)" guard-bash.sh "$(bash_json 'scripts/intent.sh event HOOK_DENY x')"
 expect allow "guard-bash: metrics は正規の入口" guard-bash.sh "$(bash_json 'scripts/intent.sh metrics')"
+expect allow "guard-bash: audit.log を読むだけ(2>&1 付き)は allow" guard-bash.sh "$(bash_json "grep HOOK_ $REL/audit.log 2>&1 | head")"
+expect ask  "guard-bash: audit.log への > は ask" guard-bash.sh "$(bash_json "echo x > $REL/audit.log")"
 grep -q '	HOOK_ASK	guard-bash: ' "$D/audit.log" && ok "guard-bash の ask が HOOK_ASK として記録される" || ng "guard-bash ask の記録" "$(grep HOOK_ "$D/audit.log")"
 grep -q '	HOOK_DENY	guard-edit: ' "$D/audit.log" && ok "guard-edit の deny が HOOK_DENY として記録される" || ng "guard-edit deny の記録" "$(grep HOOK_ "$D/audit.log")"
 expect ask  "guard-edit: settings.json への Write は ask" guard-edit.sh "$(edit_json .claude/settings.json)"
@@ -76,7 +78,6 @@ expect ask  "audit.log が書込不可でも guard-edit は ask" guard-edit.sh "
 chmod u+w "$D/audit.log"
 
 # --- intent が無い時はローカルの metrics.log に記録する(AC3)-------------------------------------------------------
-export HARNESS_METRICS_LOG="$TMP/metrics.log"
 mkdir -p "$TMP/no-intents"
 got="$(printf '%s' "$(edit_json "$REL/state.md")" | INTENTS_DIR="$TMP/no-intents" "$H/guard-edit.sh" | jq -r '.hookSpecificOutput.permissionDecision')"
 [ "$got" = deny ] && grep -q '	HOOK_DENY	guard-edit: ' "$HARNESS_METRICS_LOG" && ok "intent 無しの deny は metrics.log に記録される" || ng "metrics.log への記録 (decision=$got)" "$(cat "$HARNESS_METRICS_LOG" 2>&1)"
