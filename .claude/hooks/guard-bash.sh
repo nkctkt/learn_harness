@@ -50,7 +50,8 @@ if printf '%s' "$cmd" | grep -Eq '(curl|wget)[^|]*\|[[:space:]]*(sudo[[:space:]]
 fi
 # 6) intent の状態・監査ログ・受領証の直接操作(Phase 9)。scripts/intent.sh の正規の入口以外は ask。
 #    human-turn / event は hook 専用(Agent が呼べば承認・判定の捏造)。state.md / audit.log への書込も同様。
-if printf '%s' "$cmd" | grep -Eq 'intent\.sh[[:space:]]+(human-turn|event)|docs/intents/[^[:space:]]*/(state\.md|audit\.log)' && printf '%s' "$cmd" | grep -Eq '(human-turn|intent\.sh[[:space:]]+event|>|>>|sed[[:space:]]+-i|tee[[:space:]]|mv[[:space:]]|rm[[:space:]]|cp[[:space:]])'; then
+if printf '%s' "$cmd" | grep -Eq 'intent\.sh[[:space:]]+(human-turn|event)|docs/intents/[^[:space:]]*/(state\.md|audit\.log)' && printf '%s' "$cmd" | grep -Eq '(human-turn|intent\.sh[[:space:]]+event|(^|[^0-9&])>|sed[[:space:]]+-i|tee[[:space:]]|mv[[:space:]]|rm[[:space:]]|cp[[:space:]])'; then
+  # `2>&1` / `&>` は書込ではない(audit.log を読む grep に付けただけで ask になっていた。Phase 10 H4 の retro)
   ask "intent の受領証・状態・監査ログを直接操作しようとしています。承認は人間の応答(hook が記録)でのみ成立します。意図した操作か確認してください。"
 fi
 # 7) 計画未承認のあいだの保護領域への Bash 書込(guard-plan-approval.sh の Bash 版)。

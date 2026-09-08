@@ -4,7 +4,7 @@
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 TMP="$(mktemp -d)"; trap 'rm -r "$TMP"' EXIT     # allow-secret: 一時ディレクトリの後始末
-export INTENTS_DIR="$TMP/intents"; mkdir -p "$INTENTS_DIR"
+export INTENTS_DIR="$TMP/intents" HARNESS_METRICS_LOG="$TMP/metrics.log"; mkdir -p "$INTENTS_DIR"   # 本物の .claude/metrics.log を汚さない
 I="$ROOT/scripts/intent.sh"
 fail=0; n=0
 ok()   { n=$((n+1)); echo "  ✔ $1"; }
@@ -88,7 +88,6 @@ awk '/^## Deviations/{f=1;next} /^## /{f=0} f' "$D/memory.md" | grep -q 'skipped
 expect_fail "未知の見出しは拒否" "見出しは" "$I" note Random "x"
 
 # --- event / metrics(Phase 10: ハーネスの判定を記録して数える)-------------------------------------------
-export HARNESS_METRICS_LOG="$TMP/metrics.log"
 expect_ok   "event は active intent の audit.log に追記する" "$I" event HOOK_DENY "guard-bash: rm"
 grep -q '	HOOK_DENY	guard-bash: rm$' "$D/audit.log" && ok "event は TSV(ts / event / detail)で書かれる" || ng "event の形式" "$(tail -n2 "$D/audit.log")"
 expect_fail "event 名は大文字英字と _ のみ" "event 名" "$I" event bad-name "x"

@@ -1,6 +1,6 @@
 # Intent: 260908-stop-hook-halt
 
-- Status: active
+- Status: done
 - Scope: harness
 - Stage: handoff
 - Gate intent: approved 2026-09-08T04:29:47Z
