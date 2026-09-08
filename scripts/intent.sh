@@ -13,6 +13,7 @@
 #   scripts/intent.sh human-turn <source>                                    hook 専用: 人間の在席を記録
 #   scripts/intent.sh event <EVENT> "<detail>"                               hook 専用: 判定(HOOK_DENY / HOOK_ASK / STOP_BLOCK / POST_EDIT_FAIL)を記録
 #   scripts/intent.sh metrics [--file <log>]                                 判定・在席・差し戻しの回数と経過秒(/retro が読む)
+#   scripts/intent.sh halt-reason                                            hook 専用: Stop hook が verify を skip してよい理由(ADR-0002)
 #   scripts/intent.sh check                                                  全 intent の整合性検査(CI の docs 段)
 #
 # 設計:
@@ -263,6 +264,28 @@ cmd_human_turn() {
   audit HUMAN_TURN "${1:-unknown}" "$dir"
 }
 
+# ---- halt-reason(Stop hook が verify を skip してよい理由。ADR-0002)-----------------------------------
+HALT_WINDOW_SEC=600   # 提示 / note からこの秒数以内だけ skip できる
+HALT_MAX_SKIPS=3      # 窓の中で skip できる回数(note の連発で無期限に延長できない)
+cmd_halt_reason() {
+  # 出力: gate=intent | gate=plan | open-questions(exit 0)。理由が無い / intent が無い / 上限超過は exit 1。
+  local dir; dir="$(active_dir 2>/dev/null)" || exit 1
+  local now_e; now_e="$(iso_to_epoch "$(now)")"; [ -n "$now_e" ] || exit 1
+  within() { local e; e="$(iso_to_epoch "$1")"; [ -n "$e" ] && [ $((now_e - e)) -le $HALT_WINDOW_SEC ]; }
+  local skips=0 ts ev rest
+  while IFS="$(printf '\t')" read -r ts ev rest; do [ "$ev" = STOP_SKIP ] && within "$ts" && skips=$((skips+1)); done < "$dir/audit.log"
+  [ $skips -ge $HALT_MAX_SKIPS ] && exit 1
+  local g; for g in intent plan; do
+    if [ "$(field "Gate $g" "$dir")" = presented ]; then
+      ts="$(grep "	GATE_PRESENTED	$g\$" "$dir/audit.log" | tail -n1 | cut -f1)"
+      [ -n "$ts" ] && within "$ts" && { echo "gate=$g"; exit 0; }
+    fi
+  done
+  ts="$(grep '	NOTE	Open questions$' "$dir/audit.log" | tail -n1 | cut -f1)"
+  [ -n "$ts" ] && within "$ts" && { echo open-questions; exit 0; }
+  exit 1
+}
+
 # ---- event / metrics(ハーネスの判定を記録して数える)-------------------------------------------------
 cmd_event() {
   local name="${1:-}" detail="${2:-}" dir
@@ -366,6 +389,7 @@ case "$cmd" in
   close) cmd_close "$@" ;;
   human-turn) cmd_human_turn "$@" ;;
   event) cmd_event "$@" ;;
+  halt-reason) cmd_halt_reason ;;
   metrics) cmd_metrics "$@" ;;
   check) cmd_check ;;
   *) usage ;;
