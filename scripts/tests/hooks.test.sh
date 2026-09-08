@@ -114,6 +114,24 @@ grep -q '	HUMAN_TURN	UserPromptSubmit$' "$D/audit.log" && ok "UserPromptSubmit �
 printf '{"hook_event_name":"PostToolUse","tool_name":"AskUserQuestion","tool_response":{}}' | "$H/record-human-turn.sh"
 grep -q '	HUMAN_TURN	PostToolUse:AskUserQuestion$' "$D/audit.log" && ok "AskUserQuestion の応答でも HUMAN_TURN が記録される" || ng "AskUserQuestion の HUMAN_TURN が無い"
 
+# --- 同意の受領証(Phase 10 H2): [gate <g>] 付きの質問への Approve / Request Changes だけが answer= gate= になる --------
+ask_json() { # ask_json <question> <tool_response JSON>
+  printf '{"hook_event_name":"PostToolUse","tool_name":"AskUserQuestion","tool_input":{"questions":[{"question":"%s","header":"gate","options":[{"label":"Approve"},{"label":"Request Changes"}]}]},"tool_response":%s}' "$1" "$2"
+}
+ask_json "[gate plan] approve?" '{"answers":{"[gate plan] approve?":"Approve"}}' | "$H/record-human-turn.sh"
+grep -q '	HUMAN_TURN	PostToolUse:AskUserQuestion answer=Approve gate=plan$' "$D/audit.log" && ok "受領証: map 形の応答から answer=Approve gate=plan" || ng "受領証 map 形" "$(tail -n1 "$D/audit.log")"
+ask_json "[gate intent] approve?" '{"answers":[{"question":"[gate intent] approve?","answer":"Request Changes"}]}' | "$H/record-human-turn.sh"
+grep -q '	HUMAN_TURN	PostToolUse:AskUserQuestion answer=Request Changes gate=intent$' "$D/audit.log" && ok "受領証: 配列形の応答から answer=Request Changes gate=intent" || ng "受領証 配列形" "$(tail -n1 "$D/audit.log")"
+ask_json "[gate plan] approve?" '"Approve"' | "$H/record-human-turn.sh"
+grep -q '	HUMAN_TURN	PostToolUse:AskUserQuestion answer=Approve gate=plan$' "$D/audit.log" && ok "受領証: 文字列だけの応答でも取れる(形に依存しない)" || ng "受領証 文字列形" "$(tail -n1 "$D/audit.log")"
+ask_json "[gate plan] approve?" '{"answers":{"[gate plan] approve?":"maybe later"}}' | "$H/record-human-turn.sh"
+[ "$(tail -n1 "$D/audit.log" | cut -f3)" = "PostToolUse:AskUserQuestion" ] && ok "受領証: 自由記述(ラベル不一致)は answer= 無し" || ng "自由記述が受領証になった" "$(tail -n1 "$D/audit.log")"
+ask_json "Which DB?" '{"answers":{"Which DB?":"Approve"}}' | "$H/record-human-turn.sh"
+[ "$(tail -n1 "$D/audit.log" | cut -f3)" = "PostToolUse:AskUserQuestion" ] && ok "受領証: [gate] の印が無い質問の Approve は answer= 無し" || ng "印の無い Approve が受領証になった" "$(tail -n1 "$D/audit.log")"
+ask_json "[gate plan] approve?" '{"answers":{"[gate plan] approve?":"Approve"}}' | HARNESS_DUMP_HOOK_INPUT="$TMP/dump.jsonl" "$H/record-human-turn.sh"
+[ -s "$TMP/dump.jsonl" ] && jq -e '.tool_name == "AskUserQuestion"' "$TMP/dump.jsonl" >/dev/null && ok "HARNESS_DUMP_HOOK_INPUT 設定時は生入力を追記する" || ng "dump が無い"
+[ ! -e "$ROOT/.claude/hook-input.jsonl" ] && ok "未設定なら何も書かない" || ng "dump が既定で書かれている"
+
 # --- 計画承認後は保護領域を書ける -----------------------------------------------------------------------------
 "$I" stage inception >/dev/null
 printf '# plan\n\n## 分解\n\n```yaml\nunits:\n  - name: u1-a\n    depends_on: []\n```\n\n## 順序と walking skeleton\n\n## Definition of Done\n' > "$D/plan.md"
