@@ -21,12 +21,12 @@ hook が AskUserQuestion の回答(選択肢のラベル)を受領証に書き�
 
 ## 受け入れ条件
 
-- [ ] AC1: `record-human-turn.sh` が PostToolUse:AskUserQuestion の `tool_response` から選択されたラベルを取り出し、質問文に `[gate <g>]` の印がある時だけ `HUMAN_TURN` の detail を `PostToolUse:AskUserQuestion answer=<label> gate=<g>` として記録する。ラベルが取れない(自由記述・形式不明)時や印が無い時は `answer=` を付けない(`scripts/tests/hooks.test.sh`)
-- [ ] AC2: 新形式の intent(state.md に `Receipt: consent`)では、`gate approve <g>` は提示より後の `gate=<g>` 付き HUMAN_TURN のうち最新が `answer=Approve` の時だけ通る。`gate=` 無しの HUMAN_TURN(UserPromptSubmit 等)は無視する。UserPromptSubmit だけ、`answer=Request Changes`、別ゲートの Approve は拒否し、理由に「AskUserQuestion([gate <g>])で Approve を」と出す(`scripts/tests/intent.test.sh`)
-- [ ] AC3: `intent.sh new` が作る state.md に `- Receipt: consent` が入る。旧記録(フィールド無し)は `gate approve` も `check` も従来の規則(提示後に HUMAN_TURN があればよい)のまま通る(`intent.test.sh`、既存 2 intent に対する `intent.sh check`)
-- [ ] AC4: `intent.sh check` は `Receipt: consent` の intent について、各 GATE_APPROVED より前(提示より後)の最新の `gate=<g>` 付き HUMAN_TURN が `answer=Approve` であることを検査し、UserPromptSubmit だけで承認された改竄を落とす(`intent.test.sh`)
-- [ ] AC5: `/intent` と `/plan-units` のゲート提示手順が「質問文に `[gate <g>]` を含む AskUserQuestion で Approve / Request Changes の 2 択を出し、回答が返った同じターンで `gate approve` / `gate reject` を呼ぶ」に変わり、`harness-shape.test.sh` が両 skill にその記述(`AskUserQuestion`、`[gate`)があることを検査する
-- [ ] AC6: `.claude/rules/intents.md` と `docs/lifecycle.md` §1 / §4 の受領証の説明が新形式に更新され、templates が同期されている(`harness-shape.test.sh` の drift 検査)
+- [x] AC1: `record-human-turn.sh` が PostToolUse:AskUserQuestion の `tool_response` から選択されたラベルを取り出し、質問文に `[gate <g>]` の印がある時だけ `HUMAN_TURN` の detail を `PostToolUse:AskUserQuestion answer=<label> gate=<g>` として記録する。ラベルが取れない(自由記述・形式不明)時や印が無い時は `answer=` を付けない(`scripts/tests/hooks.test.sh`)
+- [x] AC2: 新形式の intent(state.md に `Receipt: consent`)では、`gate approve <g>` は提示より後の `gate=<g>` 付き HUMAN_TURN のうち最新が `answer=Approve` の時だけ通る。`gate=` 無しの HUMAN_TURN(UserPromptSubmit 等)は無視する。UserPromptSubmit だけ、`answer=Request Changes`、別ゲートの Approve は拒否し、理由に「AskUserQuestion([gate <g>])で Approve を」と出す(`scripts/tests/intent.test.sh`)
+- [x] AC3: `intent.sh new` が作る state.md に `- Receipt: consent` が入る。旧記録(フィールド無し)は `gate approve` も `check` も従来の規則(提示後に HUMAN_TURN があればよい)のまま通る(`intent.test.sh`、既存 2 intent に対する `intent.sh check`)
+- [x] AC4: `intent.sh check` は `Receipt: consent` の intent について、各 GATE_APPROVED より前(提示より後)の最新の `gate=<g>` 付き HUMAN_TURN が `answer=Approve` であることを検査し、UserPromptSubmit だけで承認された改竄を落とす(`intent.test.sh`)
+- [x] AC5: `/intent` と `/plan-units` のゲート提示手順が「質問文に `[gate <g>]` を含む AskUserQuestion で Approve / Request Changes の 2 択を出し、回答が返った同じターンで `gate approve` / `gate reject` を呼ぶ」に変わり、`harness-shape.test.sh` が両 skill にその記述(`AskUserQuestion`、`[gate`)があることを検査する
+- [x] AC6: `.claude/rules/intents.md` と `docs/lifecycle.md` §1 / §4 の受領証の説明が新形式に更新され、templates が同期されている(`harness-shape.test.sh` の drift 検査)
 
 ## リスクと HITL レベル
 

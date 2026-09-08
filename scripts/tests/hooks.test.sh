@@ -128,11 +128,15 @@ ask_json "[gate plan] approve?" '"Approve"' | "$H/record-human-turn.sh"
 grep -q '	HUMAN_TURN	PostToolUse:AskUserQuestion answer=Approve gate=plan$' "$D/audit.log" && ok "受領証: 文字列だけの応答でも取れる(形に依存しない)" || ng "受領証 文字列形" "$(tail -n1 "$D/audit.log")"
 ask_json "[gate plan] approve?" '{"answers":{"[gate plan] approve?":"maybe later"}}' | "$H/record-human-turn.sh"
 [ "$(tail -n1 "$D/audit.log" | cut -f3)" = "PostToolUse:AskUserQuestion" ] && ok "受領証: 自由記述(ラベル不一致)は answer= 無し" || ng "自由記述が受領証になった" "$(tail -n1 "$D/audit.log")"
+ask_json "[gate plan] approve?" '{"answers":{"[gate plan] approve?":"I will not Approve this yet"}}' | "$H/record-human-turn.sh"
+[ "$(tail -n1 "$D/audit.log" | cut -f3)" = "PostToolUse:AskUserQuestion" ] && ok "受領証: ラベルは完全一致(Approve を含む自由文は answer= 無し)" || ng "部分一致が受領証になった" "$(tail -n1 "$D/audit.log")"
 ask_json "Which DB?" '{"answers":{"Which DB?":"Approve"}}' | "$H/record-human-turn.sh"
 [ "$(tail -n1 "$D/audit.log" | cut -f3)" = "PostToolUse:AskUserQuestion" ] && ok "受領証: [gate] の印が無い質問の Approve は answer= 無し" || ng "印の無い Approve が受領証になった" "$(tail -n1 "$D/audit.log")"
 ask_json "[gate plan] approve?" '{"answers":{"[gate plan] approve?":"Approve"}}' | HARNESS_DUMP_HOOK_INPUT="$TMP/dump.jsonl" "$H/record-human-turn.sh"
 [ -s "$TMP/dump.jsonl" ] && jq -e '.tool_name == "AskUserQuestion"' "$TMP/dump.jsonl" >/dev/null && ok "HARNESS_DUMP_HOOK_INPUT 設定時は生入力を追記する" || ng "dump が無い"
-[ ! -e "$ROOT/.claude/hook-input.jsonl" ] && ok "未設定なら何も書かない" || ng "dump が既定で書かれている"
+before_files="$(find "$TMP" -type f | sort)"
+ask_json "[gate plan] approve?" '{"answers":{"[gate plan] approve?":"Approve"}}' | env -u HARNESS_DUMP_HOOK_INPUT "$H/record-human-turn.sh"
+[ "$(find "$TMP" -type f | sort)" = "$before_files" ] && ok "HARNESS_DUMP_HOOK_INPUT 未設定なら新しいファイルを一切作らない" || ng "未設定でも dump が書かれた" "$(find "$TMP" -type f -newer "$TMP/dump.jsonl")"
 
 # --- 計画承認後は保護領域を書ける -----------------------------------------------------------------------------
 "$I" stage inception >/dev/null

@@ -34,7 +34,7 @@ expect_fail "consent: UserPromptSubmit だけでは承認できない(理由に 
 reject intent
 expect_fail "consent: Request Changes では承認できない" "Approve ではありません" "$I" gate approve intent
 approve plan
-expect_fail "consent: 別ゲート(plan)の Approve では intent を承認できない" "回答がありません\|Approve ではありません" "$I" gate approve intent
+expect_fail "consent: 別ゲート(plan)の Approve では intent を承認できない(intent 宛ての最新は Request Changes のまま)" "Approve ではありません" "$I" gate approve intent
 approve intent
 expect_ok   "consent: [gate intent] への Approve で承認できる(Request Changes の後の Approve が最新)" "$I" gate approve intent
 grep -q '^- Gate intent: approved ' "$D/state.md" && ok "state.md に承認時刻が入る" || ng "state.md の承認が無い"
@@ -131,7 +131,9 @@ printf '%s\n' "$out" | grep -Eq '^HUMAN_TURN	2$' && ok "metrics: HUMAN_TURN を�
 # --- legacy(state.md に Receipt 無し)は UserPromptSubmit で承認できる ------------------------------------------
 "$I" new legacy --scope feature >/dev/null; L="$("$I" active)"
 grep -v '^- Receipt: ' "$L/state.md" > "$L/s.tmp" && mv "$L/s.tmp" "$L/state.md"
-"$I" gate present intent >/dev/null; human
+"$I" gate present intent >/dev/null
+expect_fail "legacy: 在席(HUMAN_TURN)が無ければ承認できない(旧規則も人間ゼロは拒否)" "人間の応答" "$I" gate approve intent
+human
 expect_ok "legacy: Receipt 無しの intent は在席(UserPromptSubmit)だけで承認できる" "$I" gate approve intent
 expect_ok "check: legacy の承認は通る" "$I" check
 "$I" close --abandon >/dev/null
