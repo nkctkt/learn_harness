@@ -21,13 +21,13 @@
 
 ## 受け入れ条件
 
-- [ ] AC1: guard-bash / guard-edit / guard-plan-approval / guard-secrets が deny または ask を返す時、active な intent があれば `audit.log` に `HOOK_DENY` / `HOOK_ASK` と hook 名・短い理由が追記される(`scripts/tests/hooks.test.sh`)
-- [ ] AC2: stop-verify が exit 2 の時 `STOP_BLOCK`、post-edit-check が問題を返す時 `POST_EDIT_FAIL` が同様に追記される(`hooks.test.sh`)
-- [ ] AC3: active な intent が無い時は `.claude/metrics.log` に同じ TSV 形式で追記され、そのファイルは gitignore 済み(`hooks.test.sh`、`harness-shape.test.sh`)
-- [ ] AC4: `scripts/intent.sh metrics` が deny / ask / Stop block / post-edit 失敗 / HUMAN_TURN / gate reject の回数と、INTENT_CREATED から INTENT_CLOSED(未 close なら現在)までの経過時間を出す(`scripts/tests/intent.test.sh`)
-- [ ] AC5: 新イベントを含む `audit.log` を `scripts/intent.sh check` が通す(受領証の順序検査に影響しない)(`intent.test.sh`)
-- [ ] AC6: 記録処理が失敗しても(書込先が無い等)hook の判定(deny / ask / exit code)は変わらない(`hooks.test.sh`)
-- [ ] AC7: `/retro` skill の計測欄テンプレートに新項目が入り、`templates/harness/template/` が同期されている(`harness-shape.test.sh` の drift 検査)
+- [x] AC1: guard-bash / guard-edit / guard-plan-approval / guard-secrets が deny または ask を返す時、active な intent があれば `audit.log` に `HOOK_DENY` / `HOOK_ASK` と hook 名・短い理由が追記される(`scripts/tests/hooks.test.sh`)
+- [x] AC2: stop-verify が exit 2 の時 `STOP_BLOCK`、post-edit-check が問題を返す時 `POST_EDIT_FAIL` が同様に追記される(`hooks.test.sh`)
+- [x] AC3: active な intent が無い時は `.claude/metrics.log` に同じ TSV 形式で追記され、そのファイルは gitignore 済み(`hooks.test.sh`、`harness-shape.test.sh`)
+- [x] AC4: `scripts/intent.sh metrics` が deny / ask / Stop block / post-edit 失敗 / HUMAN_TURN / gate reject の回数と、INTENT_CREATED から INTENT_CLOSED(未 close なら現在)までの経過時間を出す(`scripts/tests/intent.test.sh`)
+- [x] AC5: 新イベントを含む `audit.log` を `scripts/intent.sh check` が通す(受領証の順序検査に影響しない)(`intent.test.sh`)
+- [x] AC6: 記録処理が失敗しても(書込先が無い等)hook の判定(deny / ask / exit code)は変わらない(`hooks.test.sh`)
+- [x] AC7: `/retro` skill の計測欄テンプレートに新項目が入り、`templates/harness/template/` が同期されている(`harness-shape.test.sh` の drift 検査)
 
 ## リスクと HITL レベル
 

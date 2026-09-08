@@ -81,11 +81,15 @@ expect_ok   "event は active intent の audit.log に追記する" "$I" event H
 grep -q '	HOOK_DENY	guard-bash: rm$' "$D/audit.log" && ok "event は TSV(ts / event / detail)で書かれる" || ng "event の形式" "$(tail -n2 "$D/audit.log")"
 expect_fail "event 名は大文字英字と _ のみ" "event 名" "$I" event bad-name "x"
 expect_fail "event は detail が必要" "detail" "$I" event HOOK_DENY
+"$I" event HOOK_ASK "$(printf 'a\tb\nc')" >/dev/null
+grep -q '	HOOK_ASK	a b c$' "$D/audit.log" && ok "event: detail のタブ / 改行はスペースに正規化される(TSV の列を壊さない)" || ng "detail のサニタイズ" "$(tail -n1 "$D/audit.log")"
+"$I" event HOOK_ASK "$(printf 'x%.0s' $(seq 1 200))" >/dev/null
+[ "$(tail -n1 "$D/audit.log" | cut -f3 | wc -c | tr -d ' ')" -eq 121 ] && ok "event: detail は 120 文字に切られる" || ng "detail の切り詰め" "$(tail -n1 "$D/audit.log" | cut -f3 | wc -c)"
 for e in "HOOK_DENY guard-edit: y" "HOOK_ASK guard-bash: z" "STOP_BLOCK ts" "POST_EDIT_FAIL apps/api/src/a.ts"; do "$I" event $e >/dev/null; done
 expect_ok   "check: hook イベントを含む audit.log を通す(受領証の順序検査に影響しない)" "$I" check
 out="$("$I" metrics)"
 printf '%s\n' "$out" | grep -Eq '^HOOK_DENY	2$'      && ok "metrics: HOOK_DENY を数える"      || ng "metrics: HOOK_DENY" "$out"
-printf '%s\n' "$out" | grep -Eq '^HOOK_ASK	1$'       && ok "metrics: HOOK_ASK を数える"       || ng "metrics: HOOK_ASK" "$out"
+printf '%s\n' "$out" | grep -Eq '^HOOK_ASK	3$'       && ok "metrics: HOOK_ASK を数える"       || ng "metrics: HOOK_ASK" "$out"
 printf '%s\n' "$out" | grep -Eq '^STOP_BLOCK	1$'     && ok "metrics: STOP_BLOCK を数える"     || ng "metrics: STOP_BLOCK" "$out"
 printf '%s\n' "$out" | grep -Eq '^POST_EDIT_FAIL	1$' && ok "metrics: POST_EDIT_FAIL を数える" || ng "metrics: POST_EDIT_FAIL" "$out"
 printf '%s\n' "$out" | grep -Eq '^HUMAN_TURN	[1-9]'  && ok "metrics: HUMAN_TURN を数える"     || ng "metrics: HUMAN_TURN" "$out"
@@ -101,6 +105,12 @@ expect_fail "retro.md が無いと close できない" "retro.md" "$I" close
 echo "# retro" > "$D/retro.md"
 expect_ok "retro 後に close" "$I" close
 expect_ok "close 後は new できる" "$I" new next --scope bugfix
+"$I" close --abandon >/dev/null
+
+# --- metrics: HUMAN_TURN の厳密な件数(新しい intent で既知の回数だけ記録する)-------------------------------
+"$I" new counter --scope feature >/dev/null; human; human
+out="$("$I" metrics)"
+printf '%s\n' "$out" | grep -Eq '^HUMAN_TURN	2$' && ok "metrics: HUMAN_TURN を正確に数える(2 回 → 2)" || ng "metrics: HUMAN_TURN の件数" "$out"
 "$I" close --abandon >/dev/null
 
 # --- event / metrics: intent が無い時はローカルの metrics.log(Git 追跡外)に書く --------------------------

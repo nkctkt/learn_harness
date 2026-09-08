@@ -72,6 +72,7 @@ chmod a-w "$D/audit.log"
 expect deny "audit.log が書込不可でも guard-edit は deny" guard-edit.sh "$(edit_json "$REL/state.md")"
 expect ask  "audit.log が書込不可でも guard-bash は ask" guard-bash.sh "$(bash_json 'scripts/intent.sh human-turn me')"
 expect block "audit.log が書込不可でも guard-secrets は block" guard-secrets.sh "$(edit_json secrets/server.pem)"
+expect ask  "audit.log が書込不可でも guard-edit は ask" guard-edit.sh "$(edit_json .claude/settings.json)"
 chmod u+w "$D/audit.log"
 
 # --- intent が無い時はローカルの metrics.log に記録する(AC3)-------------------------------------------------------
@@ -92,6 +93,15 @@ grep -q '	STOP_BLOCK	' "$D/audit.log" && ok "stop-verify の block が STOP_BLOC
 out="$(printf '{"hook_event_name":"PostToolUse","tool_name":"Edit","tool_input":{"file_path":"%s/apps/api/src/a.ts"}}' "$FAKE" | CLAUDE_PROJECT_DIR="$FAKE" "$H/post-edit-check.sh")"
 printf '%s' "$out" | jq -e '.hookSpecificOutput.additionalContext' >/dev/null 2>&1 && ok "post-edit-check: 失敗を additionalContext で返す(判定は不変)" || ng "post-edit-check の出力" "$out"
 grep -q '	POST_EDIT_FAIL	' "$D/audit.log" && ok "post-edit-check の失敗が POST_EDIT_FAIL として記録される" || ng "POST_EDIT_FAIL が無い" "$(tail -n3 "$D/audit.log")"
+# intent.sh 自体が壊れていても(exit 1)判定は変わらない(AC6 の第 2 形。chmod は「書けない」、これは「記録の入口が無い」)
+printf '#!/usr/bin/env bash\nexit 1\n' > "$FAKE/scripts/intent.sh"
+printf '{"hook_event_name":"Stop","stop_hook_active":false}' | CLAUDE_PROJECT_DIR="$FAKE" "$H/stop-verify.sh" >/dev/null 2>&1; rc=$?
+[ $rc -eq 2 ] && ok "intent.sh が壊れていても stop-verify は exit 2" || ng "intent.sh 故障時の stop-verify ($rc)"
+out="$(printf '{"hook_event_name":"PostToolUse","tool_name":"Edit","tool_input":{"file_path":"%s/apps/api/src/a.ts"}}' "$FAKE" | CLAUDE_PROJECT_DIR="$FAKE" "$H/post-edit-check.sh")"
+printf '%s' "$out" | jq -e '.hookSpecificOutput.additionalContext' >/dev/null 2>&1 && ok "intent.sh が壊れていても post-edit-check は指摘を返す" || ng "intent.sh 故障時の post-edit-check" "$out"
+mkdir -p "$FAKE/docs/intents"
+got="$(printf '{"tool_name":"Write","tool_input":{"file_path":"%s/.claude/settings.json","content":"x"}}' "$FAKE" | CLAUDE_PROJECT_DIR="$FAKE" "$H/guard-edit.sh" | jq -r '.hookSpecificOutput.permissionDecision')"
+[ "$got" = ask ] && ok "intent.sh が壊れていても guard-edit は ask" || ng "intent.sh 故障時の guard-edit ($got)"
 expect allow "guard-bash: gate present は正規の入口" guard-bash.sh "$(bash_json 'scripts/intent.sh gate present intent')"
 expect allow "guard-bash: status は正規の入口" guard-bash.sh "$(bash_json 'scripts/intent.sh status')"
 
