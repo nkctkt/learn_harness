@@ -303,9 +303,12 @@ cmd_metrics() {
   fi
   [ -f "$file" ] || die "記録がありません: $file"
   echo "source	$file"
-  local e; for e in HOOK_DENY HOOK_ASK STOP_BLOCK POST_EDIT_FAIL HUMAN_TURN GATE_REJECTED; do
+  local e; for e in HOOK_DENY HOOK_ASK STOP_BLOCK STOP_SKIP POST_EDIT_FAIL HUMAN_TURN GATE_REJECTED; do
     printf '%s\t%s\n' "$e" "$(grep -c "	$e	" "$file" || true)"
   done
+  # STOP_SKIP は理由別(どちらの逃げ道が使われたかを retro で見る。ADR-0002)
+  printf 'STOP_SKIP:gate\t%s\n' "$(grep -c "	STOP_SKIP	gate=" "$file" || true)"
+  printf 'STOP_SKIP:open-questions\t%s\n' "$(grep -c "	STOP_SKIP	open-questions" "$file" || true)"
   # 経過時間: INTENT_CREATED → INTENT_CLOSED(無ければ現在)。intent 以外の記録なら先頭行 → 末尾行。
   local t0 t1 s0 s1
   t0="$(grep '	INTENT_CREATED	' "$file" | head -n1 | cut -f1)"; [ -n "$t0" ] || t0="$(head -n1 "$file" | cut -f1)"

@@ -97,13 +97,14 @@ expect_fail "event は detail が必要" "detail" "$I" event HOOK_DENY
 grep -q '	HOOK_ASK	a b c$' "$D/audit.log" && ok "event: detail のタブ / 改行はスペースに正規化される(TSV の列を壊さない)" || ng "detail のサニタイズ" "$(tail -n1 "$D/audit.log")"
 "$I" event HOOK_ASK "$(printf 'x%.0s' $(seq 1 200))" >/dev/null
 [ "$(tail -n1 "$D/audit.log" | cut -f3 | wc -c | tr -d ' ')" -eq 121 ] && ok "event: detail は 120 文字に切られる" || ng "detail の切り詰め" "$(tail -n1 "$D/audit.log" | cut -f3 | wc -c)"
-for e in "HOOK_DENY guard-edit: y" "HOOK_ASK guard-bash: z" "STOP_BLOCK ts" "POST_EDIT_FAIL apps/api/src/a.ts"; do "$I" event $e >/dev/null; done
+for e in "HOOK_DENY guard-edit: y" "HOOK_ASK guard-bash: z" "STOP_BLOCK ts" "POST_EDIT_FAIL apps/api/src/a.ts" "STOP_SKIP gate=plan" "STOP_SKIP open-questions" "STOP_SKIP open-questions"; do "$I" event $e >/dev/null; done
 expect_ok   "check: hook イベントを含む audit.log を通す(受領証の順序検査に影響しない)" "$I" check
 out="$("$I" metrics)"
 printf '%s\n' "$out" | grep -Eq '^HOOK_DENY	2$'      && ok "metrics: HOOK_DENY を数える"      || ng "metrics: HOOK_DENY" "$out"
 printf '%s\n' "$out" | grep -Eq '^HOOK_ASK	3$'       && ok "metrics: HOOK_ASK を数える"       || ng "metrics: HOOK_ASK" "$out"
 printf '%s\n' "$out" | grep -Eq '^STOP_BLOCK	1$'     && ok "metrics: STOP_BLOCK を数える"     || ng "metrics: STOP_BLOCK" "$out"
 printf '%s\n' "$out" | grep -Eq '^POST_EDIT_FAIL	1$' && ok "metrics: POST_EDIT_FAIL を数える" || ng "metrics: POST_EDIT_FAIL" "$out"
+printf '%s\n' "$out" | grep -Eq '^STOP_SKIP	3$' && printf '%s\n' "$out" | grep -Eq '^STOP_SKIP:gate	1$' && printf '%s\n' "$out" | grep -Eq '^STOP_SKIP:open-questions	2$' && ok "metrics: STOP_SKIP を合計と理由別に数える" || ng "metrics: STOP_SKIP" "$out"
 printf '%s\n' "$out" | grep -Eq '^HUMAN_TURN	[1-9]'  && ok "metrics: HUMAN_TURN を数える"     || ng "metrics: HUMAN_TURN" "$out"
 printf '%s\n' "$out" | grep -Eq '^GATE_REJECTED	2$'  && ok "metrics: GATE_REJECTED を数える"  || ng "metrics: GATE_REJECTED" "$out"
 printf '%s\n' "$out" | grep -Eq '^elapsed_sec	[0-9]+$' && ok "metrics: 経過秒を出す(未 close は現在まで)" || ng "metrics: elapsed" "$out"

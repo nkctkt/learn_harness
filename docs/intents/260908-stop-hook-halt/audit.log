@@ -16,3 +16,6 @@
 2026-09-08T04:38:24Z	HOOK_ASK	guard-edit: ハーネス自体を変更しようとしています(HITL-4): .claude/hooks/stop-verify.sh。意図した変更か確認してください。
 2026-09-08T04:43:52Z	HOOK_ASK	guard-bash: ハーネス自体(hooks / CI / policies / lefthook)を Bash で書き換えようとしています。意図した変更か確認してください。
 2026-09-08T04:45:19Z	HOOK_ASK	guard-bash: ハーネス自体(hooks / CI / policies / lefthook)を Bash で書き換えようとしています。意図した変更か確認してください。
+2026-09-08T04:46:08Z	UNIT_DONE	u1-halt-reason-and-skip
+2026-09-08T04:46:08Z	UNIT_STARTED	u2-metrics-retro
+2026-09-08T04:47:04Z	HOOK_ASK	guard-bash: ハーネス自体(hooks / CI / policies / lefthook)を Bash で書き換えようとしています。意図した変更か確認してください。
