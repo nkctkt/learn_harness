@@ -66,4 +66,5 @@ argument-hint: ""
 ## 承認後に計画を変えたくなったら(halt-and-ask)
 
 実装中に DoD が満たせない・unit の境界が違ったと分かったら、勝手に直さない。`note "Open questions"` に書き、ターンを終えて人間に聞く。
+ゲート提示中と note の直後(600 秒・3 回まで)は Stop hook が verify を skip し `STOP_SKIP` を記録する(ADR-0002)。落ちたテストを抱えたまま相談してよい。
 計画の実質が変わるなら `gate reject plan "<変更点>"` → 直して再提示(承認は取り直す)。

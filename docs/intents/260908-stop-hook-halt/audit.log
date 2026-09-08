@@ -19,3 +19,5 @@
 2026-09-08T04:46:08Z	UNIT_DONE	u1-halt-reason-and-skip
 2026-09-08T04:46:08Z	UNIT_STARTED	u2-metrics-retro
 2026-09-08T04:47:04Z	HOOK_ASK	guard-bash: ハーネス自体(hooks / CI / policies / lefthook)を Bash で書き換えようとしています。意図した変更か確認してください。
+2026-09-08T05:16:56Z	UNIT_DONE	u2-metrics-retro
+2026-09-08T05:16:56Z	UNIT_STARTED	u3-skills-docs

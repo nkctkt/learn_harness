@@ -33,7 +33,9 @@ argument-hint: "<unit-id>"
 ## halt-and-ask(計画から外れる時)
 
 次のどれかが起きたら、直さずに止まる: DoD が満たせない / 触るパスが増える / 契約や境界の変更が必要 / 依存追加が必要。
-`scripts/intent.sh note "Open questions" "<何が起きたか>"` → ターンを終えて人間に聞く。
+`scripts/intent.sh note "Open questions" "<何が起きたか>"` → ターンを終えて人間に聞く(その場で決められる問いなら AskUserQuestion でもよい)。
+落ちたテストを抱えたままでよい: note の直後 600 秒以内(3 回まで)は Stop hook が verify を skip し、`STOP_SKIP open-questions` を記録する(ADR-0002)。落ちたテストは CI が受ける。
+skip は数えられている。相談以外の目的で note を書かない(retro で回数が見える)。
 計画の実質が変わるなら `/plan-units` の「承認後に計画を変えたくなったら」に従う(承認を取り直す)。
 依存追加は `/add-dependency`(HITL-4)。
 

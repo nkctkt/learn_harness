@@ -61,6 +61,7 @@ Phase 9 で「指示 → hook」に変換したのは 2 つ(計画承認前の�
 
 - unit ごとに `start → DoD のテスト → 最小実装 → verify → commit → done`。Stop hook(`--changed`)と post-edit-check がここで効く。
 - 計画から外れたら halt-and-ask(`note "Open questions"` → ターン終了)。計画の実質が変わるなら承認を取り直す。
+- **Stop hook との関係(ADR-0002)**: ゲート提示中と Open questions の直後(600 秒以内、窓内 3 回まで)は `stop-verify` が verify を skip し、`STOP_SKIP gate=<g>` / `STOP_SKIP open-questions` を audit.log に記録する。落ちたテストを抱えたまま人間に相談できる。skip は `intent.sh metrics` が理由別に数え、`/retro` が読む。それ以外の Stop は従来どおり block。最終防衛線は CI の全体 verify。
 - u1 だけは compose で実際に結合を通してから done にする。
 
 ### Handoff — `/create-pr`
