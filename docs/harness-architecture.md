@@ -24,9 +24,10 @@ Agent が「どう書くか」を助ける層と、Repository が「何を通す
 
 ## 2. 各層の責務と、このリポジトリでの実体
 
-### L1 AGENTS.md / CLAUDE.md — 「知っているべき事実と短いルール」
+### L1 AGENTS.md / CLAUDE.md / rules — 「知っているべき事実と短いルール」
 
-- `AGENTS.md`(52 行): 構成、コマンド、規約、テスト方針、Git 作法、禁止事項。`CLAUDE.md` は `@AGENTS.md` + Claude 固有 3 行。
+- `AGENTS.md`(63 行): 構成、コマンド、規約、ライフサイクル、テスト方針、Git 作法、禁止事項。`CLAUDE.md` は `@AGENTS.md` + Claude 固有 3 行。
+- `.claude/rules/*.md`(Ph.9、7 本): `paths:` で領域(api / web / enricher / shortener / infra / harness / intents)ごとに自動で読まれる事実。AI-DLC の memory 層(org → project → phase)を Claude Code の仕組みで実現したもの。AGENTS.md を 200 行以内に保つための逃がし先。
 - **書かないもの**: 手順(→ Skills)、linter で強制できること、長い説明。
 - **限界**: request に過ぎない。「テストの skip 禁止」と書いても Agent は skip し得る。守らせたいことは Hook(L3)か CI(L7)に変換する。
 
@@ -37,6 +38,7 @@ Agent が「どう書くか」を助ける層と、Repository が「何を通す
 | `/add-dependency` | 実在・保守・ライセンス・脆弱性・公開日の確認 → 完全固定で追加 | slopsquatting、cooldown(Ex.05) |
 | `/new-service` | 言語・サービス追加時に触るべきファイルのチェックリスト | Go 追加で触った 8 ファイル(Ex.07) |
 | `/fix-ci` | CI 失敗ログの読み方、再現、禁止事項(skip / 閾値緩和) | Ex.01, 03, 05, 06, 07 の失敗パターン |
+| `/intent` `/plan-units` `/adr` `/build-unit` `/create-pr` `/release` `/incident` `/retro` | ライフサイクルの各タスクの手順(記録 → ゲート → 実装 → PR → 運用 → 振り返り)。ゲートは 2 択で提示してターンを終える | AI-DLC の stage(Phase 9、`docs/lifecycle.md`) |
 
 Skill は「手順を短くする」ものであって「手順を強制する」ものではない。強制は L3 / L7 で行う(例: `/add-dependency` を通らない `pnpm add` を止めるのは Rego の完全固定ルールと cooldown)。
 
@@ -50,6 +52,9 @@ Skill は「手順を短くする」ものであって「手順を強制する�
 | `post-edit-check.sh` | PostToolUse(Edit/Write) | 編集ファイルだけ `verify.sh --fix --files` | block できない。heredoc は素通り(Ex.01) |
 | `stop-verify.sh` | Stop | `verify.sh --changed` が通るまで完了を block | 「テストした」を「テストが通った」に変える層(Ex.03) |
 | `permissions.deny`(15 件) | - | hook と二重化 | 設定を緩められても hook が残る |
+| `record-human-turn.sh`(Ph.9) | UserPromptSubmit / PostToolUse(AskUserQuestion) | 人間の在席を `audit.log` に書く(HUMAN_TURN)。`intent.sh gate approve` はこれが無いと拒否 | 受領証は Agent が発行できないものにする(AI-DLC) |
+| `guard-plan-approval.sh`(Ph.9) | PreToolUse(Edit/Write) | active intent の計画が未承認なら `apps/ services/ packages/ infra/ contracts/` を deny | 「計画が先、コードは後」を指示ではなく hook で守る |
+| `session-start.sh`(Ph.9) | SessionStart | intent の状態と hook の `bash -n` 結果を additionalContext で注入 | 状態は Git のファイルに置き、開始時に読み直す |
 
 **最大の教訓(Ex.04)**: hook の構文エラーは exit 2 = block で、**Agent の全ツールが止まり自己修復できない**。対策は pre-commit の `bash -n`、hook 変更を CODEOWNERS 承認に、README の復旧手順。
 
@@ -57,6 +62,7 @@ Skill は「手順を短くする」ものであって「手順を強制する�
 
 - `test-reviewer`: テストが実装を壊した時に落ちるかを読む。13 分でバグ 1 件を発見(Ex.10)。
 - 助言であってゲートではない。指摘を **テストに変換して初めて** 決定論的になる。
+- `plan-reviewer`(Ph.9): 計画承認ゲートの前に plan.md を敵対的に読む(AC の取りこぼし、walking skeleton、検証不能な DoD、未申告の信頼境界)。READY / NOT-READY を返すが承認は人間。
 
 ### L5 pre-commit(lefthook)— 人間の commit 経路
 
@@ -120,6 +126,7 @@ Skill は「手順を短くする」ものであって「手順を強制する�
 - `.claude/settings.json` を編集すれば hook を消せる → guard-edit の ask + CODEOWNERS。それでも hooks 配列ごと消されれば消える → 最終防衛線は CI と Rulesets。
 - hook の構文エラーで Agent が完全停止する → `bash -n`、復旧手順(README)。
 - guard-bash が文字列リテラルにも反応する(誤検知 3 件)→ `git commit -F`、Write ツール。
+- 承認の受領証(HUMAN_TURN)と guard-plan-approval はローカル層(Ph.9)→ CI の `intent.sh check` と PR での `docs/intents/` diff レビュー。新しい subagent はセッション再起動まで呼べない。
 
 ## 6. Sandbox(未導入。導入時の設計)
 

@@ -10,10 +10,11 @@ AI Coding Agent 時代のコード品質保証(Quality Gate / CI / Claude Code H
 3. [docs/harness-architecture.md](docs/harness-architecture.md) — CLAUDE.md / Skills / Hooks / pre-commit / CI / Rulesets の責務分離
 4. [docs/ci-design.md](docs/ci-design.md) — Job 構成、並列化、キャッシュ、required checks、merge policy
 5. [docs/security.md](docs/security.md) — SAST / SCA / Secrets / Container / IaC / Supply chain
-6. `docs/exercises/00〜11` — 意図的欠陥 → 検出 → 原因 → 修正 の記録(本文の根拠)
-7. [templates/README.md](templates/README.md) — 新規プロジェクトへの適用手順(copier)
+6. [docs/lifecycle.md](docs/lifecycle.md) — 開発ライフサイクルの各タスク(intent → plan → build → PR → release / incident → retro)と、支援 / 強制する要素(AI-DLC 参照)
+7. `docs/exercises/00〜12` — 意図的欠陥 → 検出 → 原因 → 修正 の記録(本文の根拠)
+8. [templates/README.md](templates/README.md) — 新規プロジェクトへの適用手順(copier)
 
-元になった調査: `../ai_driven_development/`(2026-09-03)。
+元になった調査: `../ai_driven_development/`(2026-09-03)。Phase 9 のライフサイクル層は AWS の AI-DLC(`../aidlc-workflows`)を参照(`docs/plan.md` §12)。
 
 ## 構成
 
@@ -25,7 +26,8 @@ AI Coding Agent 時代のコード品質保証(Quality Gate / CI / Claude Code H
 | `services/shortener` | Go(短縮 URL、クリック集計、distroless) |
 | `contracts/` | api の期待(zod)から生成した JSON Schema。producer 側のテストが読む |
 | `scripts/verify.sh` | hooks / pre-commit / CI が共有する検証。`--files` / `--changed` / 全体、`--only ts,py,go,sec,infra`。対象は `scripts/verify/targets.sh` |
-| `.claude/` | settings(deny / hooks)、hooks、skills(`/add-dependency` `/new-service` `/fix-ci`)、agents(`test-reviewer`) |
+| `.claude/` | settings(deny / hooks)、hooks(guard-* / post-edit-check / stop-verify / record-human-turn / guard-plan-approval / session-start)、rules(領域別)、skills(`/add-dependency` `/new-service` `/fix-ci` + ライフサイクル 8 本)、agents(`test-reviewer` `plan-reviewer`) |
+| `scripts/intent.sh`、`docs/intents/` | 変更 1 件ごとの記録(intent / plan / state / audit / memory / retro)と承認ゲート。`docs/adr/` は設計判断 |
 | `.github/` | workflows(ci / security / nightly / release)、rulesets as code、CODEOWNERS、dependabot |
 | `policies/` | Semgrep 自作ルール、Rego(workflows / package.json / Terraform) |
 | `infra/` | compose(4 サービス)、Terraform(validate と scan のみ) |

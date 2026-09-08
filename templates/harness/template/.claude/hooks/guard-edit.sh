@@ -30,6 +30,8 @@ case "$rel" in
     decide deny "lockfile は手で編集しません: ${rel}。pnpm / uv / go のコマンド経由で更新してください。" ;;
   apps/api/drizzle/*.sql)
     decide deny "生成済みマイグレーションは書き換えません: ${rel}。schema.ts を変更して drizzle-kit generate で新しいファイルを作ってください。" ;;
+  docs/intents/*/state.md|docs/intents/*/audit.log)
+    decide deny "intent の状態と監査ログは直接書きません: ${rel}。scripts/intent.sh(gate / stage / unit / note)経由で更新してください。承認(HUMAN_TURN)は hook だけが書きます。" ;;
   .claude/settings.json|.claude/hooks/*|.github/workflows/*|.github/rulesets/*|.github/CODEOWNERS|policies/*|lefthook.yml|.gitleaks.toml)
     decide ask "ハーネス自体を変更しようとしています(HITL-4): ${rel}。意図した変更か確認してください。" ;;
 esac
