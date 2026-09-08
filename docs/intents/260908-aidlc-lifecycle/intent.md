@@ -23,7 +23,7 @@
 - [x] AC3: 改竄された記録(HUMAN_TURN 削除、state と audit の不一致、unit の循環、未宣言 unit への依存、必須節の欠落の 5 種)を `intent.sh check` が落とし、CI(`--only docs`)で走る
 - [x] AC4: SessionStart で active intent の状態と hook の健全性が additionalContext として注入される(`hooks.test.sh`)
 - [x] AC5: ライフサイクルの各タスクに skill がある(intent / plan-units / adr / build-unit / create-pr / release / incident / retro)。`.claude/rules/` が領域別に存在する
-- [ ] AC6: この intent 自身がゲートを通る(人間が `gate approve intent` / `gate approve plan` を行い、CI の check が通る)。事後に intent を作るのはこの Phase のブートストラップだけで、次の intent からは作業前に作る(`docs/lifecycle.md` §3)
+- [x] AC6: この intent 自身がゲートを通る(人間が `gate approve intent` / `gate approve plan` を行い、CI の check が通る)。事後に intent を作るのはこの Phase のブートストラップだけで、次の intent からは作業前に作る(`docs/lifecycle.md` §3)
 
 ## リスクと HITL レベル
 
