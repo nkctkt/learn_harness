@@ -104,7 +104,9 @@ printf '%s\n' "$out" | grep -Eq '^HOOK_DENY	2$'      && ok "metrics: HOOK_DENY �
 printf '%s\n' "$out" | grep -Eq '^HOOK_ASK	3$'       && ok "metrics: HOOK_ASK を数える"       || ng "metrics: HOOK_ASK" "$out"
 printf '%s\n' "$out" | grep -Eq '^STOP_BLOCK	1$'     && ok "metrics: STOP_BLOCK を数える"     || ng "metrics: STOP_BLOCK" "$out"
 printf '%s\n' "$out" | grep -Eq '^POST_EDIT_FAIL	1$' && ok "metrics: POST_EDIT_FAIL を数える" || ng "metrics: POST_EDIT_FAIL" "$out"
-printf '%s\n' "$out" | grep -Eq '^STOP_SKIP	3$' && printf '%s\n' "$out" | grep -Eq '^STOP_SKIP:gate	1$' && printf '%s\n' "$out" | grep -Eq '^STOP_SKIP:open-questions	2$' && ok "metrics: STOP_SKIP を合計と理由別に数える" || ng "metrics: STOP_SKIP" "$out"
+printf '%s\n' "$out" | grep -Eq '^STOP_SKIP	3$'                && ok "metrics: STOP_SKIP の合計を数える"          || ng "metrics: STOP_SKIP 合計" "$out"
+printf '%s\n' "$out" | grep -Eq '^STOP_SKIP:gate	1$'           && ok "metrics: STOP_SKIP:gate を数える"           || ng "metrics: STOP_SKIP:gate" "$out"
+printf '%s\n' "$out" | grep -Eq '^STOP_SKIP:open-questions	2$' && ok "metrics: STOP_SKIP:open-questions を数える" || ng "metrics: STOP_SKIP:open-questions" "$out"
 printf '%s\n' "$out" | grep -Eq '^HUMAN_TURN	[1-9]'  && ok "metrics: HUMAN_TURN を数える"     || ng "metrics: HUMAN_TURN" "$out"
 printf '%s\n' "$out" | grep -Eq '^GATE_REJECTED	2$'  && ok "metrics: GATE_REJECTED を数える"  || ng "metrics: GATE_REJECTED" "$out"
 printf '%s\n' "$out" | grep -Eq '^elapsed_sec	[0-9]+$' && ok "metrics: 経過秒を出す(未 close は現在まで)" || ng "metrics: elapsed" "$out"
@@ -134,14 +136,15 @@ expect_fail "halt-reason: intent が無ければ exit 1" "" bash -c "'$I' halt-r
 "$I" new halt --scope feature >/dev/null; HD="$("$I" active)"
 "$I" halt-reason >/dev/null 2>&1 && ng "halt-reason: 提示も note も無いのに理由が出た" || ok "halt-reason: 提示も note も無ければ exit 1"
 "$I" gate present intent >/dev/null
-[ "$("$I" halt-reason)" = "gate=intent" ] && ok "halt-reason: gate presented(600 秒以内)で gate=intent" || ng "halt-reason gate" "$("$I" halt-reason)"
+hr() { out="$("$I" halt-reason)"; rc=$?; }   # 出力と終了コードの両方を見る(hook は終了コードで分岐する)
+hr; [ $rc -eq 0 ] && [ "$out" = "gate=intent" ] && ok "halt-reason: gate presented(600 秒以内)で gate=intent(exit 0)" || ng "halt-reason gate" "rc=$rc out=$out"
 age() { sed "s/^[0-9T:Z-]*\(	$1\)/2020-01-01T00:00:00Z\1/" "$HD/audit.log" > "$HD/a.tmp" && mv "$HD/a.tmp" "$HD/audit.log"; }   # age <event 列の正規表現>: 該当行の時刻を過去にする
 age 'GATE_PRESENTED	intent'
 "$I" halt-reason >/dev/null 2>&1 && ng "halt-reason: 601 秒前の提示で理由が出た" || ok "halt-reason: GATE_PRESENTED が 600 秒より古ければ exit 1"
 "$I" note "Open questions" "DoD が満たせない" >/dev/null
-[ "$("$I" halt-reason)" = "open-questions" ] && ok "halt-reason: Open questions の note 直後は open-questions" || ng "halt-reason note" "$("$I" halt-reason)"
+hr; [ $rc -eq 0 ] && [ "$out" = "open-questions" ] && ok "halt-reason: Open questions の note 直後は open-questions(exit 0)" || ng "halt-reason note" "rc=$rc out=$out"
 "$I" gate reject intent "redo" >/dev/null; "$I" gate present intent >/dev/null
-[ "$("$I" halt-reason)" = "gate=intent" ] && ok "halt-reason: 提示と note が両方あれば gate= を優先" || ng "halt-reason 優先" "$("$I" halt-reason)"
+hr; [ $rc -eq 0 ] && [ "$out" = "gate=intent" ] && ok "halt-reason: 提示と note が両方あれば gate= を優先" || ng "halt-reason 優先" "rc=$rc out=$out"
 age 'GATE_PRESENTED	intent'; age 'NOTE	Open questions'
 "$I" halt-reason >/dev/null 2>&1 && ng "halt-reason: 古い note で理由が出た" || ok "halt-reason: note が 600 秒より古ければ exit 1"
 "$I" note "Open questions" "again" >/dev/null
@@ -149,7 +152,7 @@ for _ in 1 2 3; do "$I" event STOP_SKIP open-questions >/dev/null; done
 "$I" halt-reason >/dev/null 2>&1 && ng "halt-reason: 上限 3 回を超えて理由が出た" || ok "halt-reason: 600 秒以内に STOP_SKIP が 3 件あれば exit 1(上限)"
 ln="$(grep -n '	STOP_SKIP	' "$HD/audit.log" | head -n1 | cut -d: -f1)"   # 最初の STOP_SKIP だけ古くする(BSD / GNU 共通の行番号指定)
 sed "${ln}s/^[0-9T:Z-]*/2020-01-01T00:00:00Z/" "$HD/audit.log" > "$HD/a.tmp" && mv "$HD/a.tmp" "$HD/audit.log"
-[ "$("$I" halt-reason)" = "open-questions" ] && ok "halt-reason: 600 秒より古い STOP_SKIP は上限に数えない(2 件なら skip 可)" || ng "halt-reason 上限の窓" "$(grep STOP_SKIP "$HD/audit.log")"
+hr; [ $rc -eq 0 ] && [ "$out" = "open-questions" ] && ok "halt-reason: 600 秒より古い STOP_SKIP は上限に数えない(2 件なら skip 可)" || ng "halt-reason 上限の窓" "rc=$rc $(grep STOP_SKIP "$HD/audit.log")"
 "$I" close --abandon >/dev/null
 
 # --- legacy(state.md に Receipt 無し)は UserPromptSubmit で承認できる ------------------------------------------

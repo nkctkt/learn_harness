@@ -20,12 +20,12 @@ skip は隠さず `STOP_SKIP` として audit.log に残し、`/retro` が回数
 
 ## 受け入れ条件
 
-- [ ] AC1: active な intent の `Gate intent` か `Gate plan` が `presented` で、その `GATE_PRESENTED` が **600 秒以内** の時、stop-verify は verify を走らせず exit 0 で終わり、`audit.log` に `STOP_SKIP gate=<g>` を記録する。600 秒より古い提示では skip しない(`scripts/tests/hooks.test.sh`、`intent.test.sh`)
-- [ ] AC2: 直近 600 秒以内に `NOTE Open questions` が `audit.log` にある時、同様に skip し `STOP_SKIP open-questions` を記録する。600 秒より古い note では skip しない(`hooks.test.sh`、`intent.test.sh`。テストは audit.log の時刻を書き換えて期限切れを作る)
-- [ ] AC2b: 600 秒以内の `STOP_SKIP` が既に 3 件あれば、条件を満たしても skip しない(note の連発で無期限に延長できない)(`intent.test.sh`)
-- [ ] AC3: 上記以外(ゲート未提示・note 無し・intent 無し)は従来どおり verify を走らせ、失敗なら exit 2 と `STOP_BLOCK`(`hooks.test.sh` の既存 assertion が全て通る)
-- [ ] AC4: `intent.sh metrics` が `STOP_SKIP` を合計と理由別(`gate=` / `open-questions`)に数え、`/retro` の計測欄に「Stop skip(理由別)」が入る(`scripts/tests/intent.test.sh`、`harness-shape.test.sh`)
-- [ ] AC5: `/build-unit` と `/plan-units` の halt-and-ask 手順と `docs/lifecycle.md` に「相談のためにターンを終える時は Stop hook が verify を skip する。落ちたテストは CI が受ける」が書かれ、templates が同期されている(`harness-shape.test.sh` の grep と drift 検査)
+- [x] AC1: active な intent の `Gate intent` か `Gate plan` が `presented` で、その `GATE_PRESENTED` が **600 秒以内** の時、stop-verify は verify を走らせず exit 0 で終わり、`audit.log` に `STOP_SKIP gate=<g>` を記録する。600 秒より古い提示では skip しない(`scripts/tests/hooks.test.sh`、`intent.test.sh`)
+- [x] AC2: 直近 600 秒以内に `NOTE Open questions` が `audit.log` にある時、同様に skip し `STOP_SKIP open-questions` を記録する。600 秒より古い note では skip しない(`hooks.test.sh`、`intent.test.sh`。テストは audit.log の時刻を書き換えて期限切れを作る)
+- [x] AC2b: 600 秒以内の `STOP_SKIP` が既に 3 件あれば、条件を満たしても skip しない(note の連発で無期限に延長できない)(`intent.test.sh`)
+- [x] AC3: 上記以外(ゲート未提示・note 無し・intent 無し)は従来どおり verify を走らせ、失敗なら exit 2 と `STOP_BLOCK`(`hooks.test.sh` の既存 assertion が全て通る)
+- [x] AC4: `intent.sh metrics` が `STOP_SKIP` を合計と理由別(`gate=` / `open-questions`)に数え、`/retro` の計測欄に「Stop skip(理由別)」が入る(`scripts/tests/intent.test.sh`、`harness-shape.test.sh`)
+- [x] AC5: `/build-unit` と `/plan-units` の halt-and-ask 手順と `docs/lifecycle.md` に「相談のためにターンを終える時は Stop hook が verify を skip する。落ちたテストは CI が受ける」が書かれ、templates が同期されている(`harness-shape.test.sh` の grep と drift 検査)
 
 ## リスクと HITL レベル
 
