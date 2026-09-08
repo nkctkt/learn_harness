@@ -22,3 +22,5 @@
 2026-09-08T03:01:19Z	HUMAN_TURN	PostToolUse:AskUserQuestion answer=Approve gate=plan
 2026-09-08T03:01:33Z	HOOK_ASK	guard-bash: ハーネス自体(hooks / CI / policies / lefthook)を Bash で書き換えようとしています。意図した変更か確認してください。
 2026-09-08T03:02:10Z	NOTE	Interpretations
+2026-09-08T03:02:10Z	UNIT_DONE	u1-answer-receipt
+2026-09-08T03:02:10Z	UNIT_STARTED	u2-consent-gate

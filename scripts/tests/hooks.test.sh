@@ -107,17 +107,19 @@ expect allow "guard-bash: status は正規の入口" guard-bash.sh "$(bash_json 
 
 # --- 人間の在席の記録と、それによる承認 ----------------------------------------------------------------------
 "$I" gate present intent >/dev/null
+ask_json() { # ask_json <question> <tool_response JSON>
+  printf '{"hook_event_name":"PostToolUse","tool_name":"AskUserQuestion","tool_input":{"questions":[{"question":"%s","header":"gate","options":[{"label":"Approve"},{"label":"Request Changes"}]}]},"tool_response":%s}' "$1" "$2"
+}
 "$I" gate approve intent >/dev/null 2>&1 && ng "HUMAN_TURN 無しで承認できてしまった" || ok "HUMAN_TURN 無しの承認は拒否"
 printf '{"hook_event_name":"UserPromptSubmit","prompt":"approve"}' | "$H/record-human-turn.sh"
 grep -q '	HUMAN_TURN	UserPromptSubmit$' "$D/audit.log" && ok "UserPromptSubmit で HUMAN_TURN が記録される" || ng "HUMAN_TURN が無い" "$(cat "$D/audit.log")"
-"$I" gate approve intent >/dev/null && ok "人間の応答後は承認できる" || ng "承認できない"
+"$I" gate approve intent >/dev/null 2>&1 && ng "consent: テキストの返答(UserPromptSubmit)で承認できてしまった" || ok "consent: テキストの返答では承認できない"
+ask_json "[gate intent] approve?" '{"answers":{"[gate intent] approve?":"Approve"}}' | "$H/record-human-turn.sh"
+"$I" gate approve intent >/dev/null && ok "consent: hook が書いた [gate intent] の Approve で承認できる(hook → intent.sh の縦串)" || ng "承認できない" "$(tail -n3 "$D/audit.log")"
 printf '{"hook_event_name":"PostToolUse","tool_name":"AskUserQuestion","tool_response":{}}' | "$H/record-human-turn.sh"
 grep -q '	HUMAN_TURN	PostToolUse:AskUserQuestion$' "$D/audit.log" && ok "AskUserQuestion の応答でも HUMAN_TURN が記録される" || ng "AskUserQuestion の HUMAN_TURN が無い"
 
 # --- 同意の受領証(Phase 10 H2): [gate <g>] 付きの質問への Approve / Request Changes だけが answer= gate= になる --------
-ask_json() { # ask_json <question> <tool_response JSON>
-  printf '{"hook_event_name":"PostToolUse","tool_name":"AskUserQuestion","tool_input":{"questions":[{"question":"%s","header":"gate","options":[{"label":"Approve"},{"label":"Request Changes"}]}]},"tool_response":%s}' "$1" "$2"
-}
 ask_json "[gate plan] approve?" '{"answers":{"[gate plan] approve?":"Approve"}}' | "$H/record-human-turn.sh"
 grep -q '	HUMAN_TURN	PostToolUse:AskUserQuestion answer=Approve gate=plan$' "$D/audit.log" && ok "受領証: map 形の応答から answer=Approve gate=plan" || ng "受領証 map 形" "$(tail -n1 "$D/audit.log")"
 ask_json "[gate intent] approve?" '{"answers":[{"question":"[gate intent] approve?","answer":"Request Changes"}]}' | "$H/record-human-turn.sh"
@@ -135,7 +137,7 @@ ask_json "[gate plan] approve?" '{"answers":{"[gate plan] approve?":"Approve"}}'
 # --- 計画承認後は保護領域を書ける -----------------------------------------------------------------------------
 "$I" stage inception >/dev/null
 printf '# plan\n\n## 分解\n\n```yaml\nunits:\n  - name: u1-a\n    depends_on: []\n```\n\n## 順序と walking skeleton\n\n## Definition of Done\n' > "$D/plan.md"
-"$I" gate present plan >/dev/null; printf '{"hook_event_name":"UserPromptSubmit"}' | "$H/record-human-turn.sh"; "$I" gate approve plan >/dev/null
+"$I" gate present plan >/dev/null; ask_json "[gate plan] approve?" '{"answers":{"[gate plan] approve?":"Approve"}}' | "$H/record-human-turn.sh"; "$I" gate approve plan >/dev/null
 expect allow "計画承認後: apps への Write" guard-plan-approval.sh "$(edit_json apps/api/src/x.ts)"
 expect allow "計画承認後: Bash リダイレクトで apps に書く" guard-bash.sh "$(bash_json 'echo x > apps/api/src/y.ts')"
 
