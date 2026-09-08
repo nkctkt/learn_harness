@@ -93,7 +93,22 @@ grep -q '	STOP_BLOCK	' "$D/audit.log" && ok "stop-verify の block が STOP_BLOC
 out="$(printf '{"hook_event_name":"PostToolUse","tool_name":"Edit","tool_input":{"file_path":"%s/apps/api/src/a.ts"}}' "$FAKE" | CLAUDE_PROJECT_DIR="$FAKE" "$H/post-edit-check.sh")"
 printf '%s' "$out" | jq -e '.hookSpecificOutput.additionalContext' >/dev/null 2>&1 && ok "post-edit-check: 失敗を additionalContext で返す(判定は不変)" || ng "post-edit-check の出力" "$out"
 grep -q '	POST_EDIT_FAIL	' "$D/audit.log" && ok "post-edit-check の失敗が POST_EDIT_FAIL として記録される" || ng "POST_EDIT_FAIL が無い" "$(tail -n3 "$D/audit.log")"
+# --- Stop hook は「人間に相談するためにターンを終える」時だけ verify を skip する(ADR-0002)-----------------------
+printf '#!/usr/bin/env bash\ntouch "$(dirname "$0")/../verify-ran"; echo "  ✘ vitest (apps/api)"; exit 1\n' > "$FAKE/scripts/verify.sh"
+"$I" note "Open questions" "DoD が満たせない" >/dev/null
+printf '{"hook_event_name":"Stop","stop_hook_active":false}' | CLAUDE_PROJECT_DIR="$FAKE" "$H/stop-verify.sh" >/dev/null 2>&1; rc=$?
+[ $rc -eq 0 ] && ok "stop-verify: Open questions 直後は verify 失敗でも exit 0(skip)" || ng "stop-verify skip(open-questions) rc=$rc"
+grep -q '	STOP_SKIP	open-questions$' "$D/audit.log" && ok "skip は STOP_SKIP open-questions として記録される" || ng "STOP_SKIP が無い" "$(tail -n2 "$D/audit.log")"
+[ ! -e "$FAKE/verify-ran" ] && ok "skip の時は verify.sh を実行しない" || ng "skip なのに verify.sh が走った"
+printf '# plan\n\n## 分解\n\n## 順序と walking skeleton\n\n## Definition of Done\n' > "$D/plan.md"; "$I" gate present plan >/dev/null   # この時点では plan は未提示なので、提示中の状態を作る
+printf '{"hook_event_name":"Stop","stop_hook_active":false}' | CLAUDE_PROJECT_DIR="$FAKE" "$H/stop-verify.sh" >/dev/null 2>&1; rc=$?
+[ $rc -eq 0 ] && grep -q '	STOP_SKIP	gate=plan$' "$D/audit.log" && ok "stop-verify: gate presented 中は skip し STOP_SKIP gate=plan を記録" || ng "stop-verify skip(gate) rc=$rc" "$(tail -n2 "$D/audit.log")"
+"$I" gate reject plan "halt test done" >/dev/null   # 後続のテストのために pending に戻す
+sed 's/^[0-9T:Z-]*\(	NOTE	Open questions\)/2020-01-01T00:00:00Z\1/' "$D/audit.log" > "$D/a.tmp" && mv "$D/a.tmp" "$D/audit.log"
+printf '{"hook_event_name":"Stop","stop_hook_active":false}' | CLAUDE_PROJECT_DIR="$FAKE" "$H/stop-verify.sh" >/dev/null 2>&1; rc=$?
+[ $rc -eq 2 ] && [ -e "$FAKE/verify-ran" ] && ok "stop-verify: 提示も新しい note も無ければ従来どおり verify を走らせ exit 2" || ng "stop-verify 従来経路 rc=$rc"
 # intent.sh 自体が壊れていても(exit 1)判定は変わらない(AC6 の第 2 形。chmod は「書けない」、これは「記録の入口が無い」)
+"$I" note "Open questions" "fresh" >/dev/null   # 新しい note があっても、intent.sh が壊れていれば skip しない(block 側に倒れる)
 printf '#!/usr/bin/env bash\nexit 1\n' > "$FAKE/scripts/intent.sh"
 printf '{"hook_event_name":"Stop","stop_hook_active":false}' | CLAUDE_PROJECT_DIR="$FAKE" "$H/stop-verify.sh" >/dev/null 2>&1; rc=$?
 [ $rc -eq 2 ] && ok "intent.sh が壊れていても stop-verify は exit 2" || ng "intent.sh 故障時の stop-verify ($rc)"

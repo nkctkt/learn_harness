@@ -27,7 +27,11 @@ for f in .claude/agents/*.md; do
 done
 # 3b. /retro の計測欄はハーネスの判定回数を読む(Phase 10、improvement-plan H1。retro で摩擦を数えない経路を塞ぐ)
 r=.claude/skills/retro/SKILL.md
-grep -q 'intent.sh metrics' "$r" && grep -q 'deny' "$r" && grep -q 'Stop block' "$r" && ok "retro skill が intent.sh metrics(deny / Stop block)を読む" || ng "retro skill の計測欄に metrics / deny / Stop block が無い: $r"
+grep -q 'intent.sh metrics' "$r" && grep -q 'deny' "$r" && grep -q 'Stop block' "$r" && grep -q 'Stop skip' "$r" && ok "retro skill が intent.sh metrics(deny / Stop block / Stop skip)を読む" || ng "retro skill の計測欄に metrics / deny / Stop block / Stop skip が無い: $r"
+# 3e. halt-and-ask とゲート提示で Stop hook が skip されることを、手順(skill)と地図(lifecycle)が説明している(ADR-0002)
+for f in .claude/skills/build-unit/SKILL.md .claude/skills/plan-units/SKILL.md docs/lifecycle.md; do
+  grep -q 'STOP_SKIP' "$f" && ok "$f が Stop hook の skip(STOP_SKIP)を説明する" || ng "$f に STOP_SKIP の説明が無い"
+done
 # 3c. ゲートは [gate <g>] 付きの AskUserQuestion で出す(Phase 10 H2。テキスト提示は承認にならないので、手順がそう書いていることを検査する)
 for pair in intent:intent plan-units:plan; do
   sk="${pair%%:*}"; g="${pair##*:}"; f=".claude/skills/$sk/SKILL.md"

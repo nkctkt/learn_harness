@@ -97,13 +97,16 @@ expect_fail "event は detail が必要" "detail" "$I" event HOOK_DENY
 grep -q '	HOOK_ASK	a b c$' "$D/audit.log" && ok "event: detail のタブ / 改行はスペースに正規化される(TSV の列を壊さない)" || ng "detail のサニタイズ" "$(tail -n1 "$D/audit.log")"
 "$I" event HOOK_ASK "$(printf 'x%.0s' $(seq 1 200))" >/dev/null
 [ "$(tail -n1 "$D/audit.log" | cut -f3 | wc -c | tr -d ' ')" -eq 121 ] && ok "event: detail は 120 文字に切られる" || ng "detail の切り詰め" "$(tail -n1 "$D/audit.log" | cut -f3 | wc -c)"
-for e in "HOOK_DENY guard-edit: y" "HOOK_ASK guard-bash: z" "STOP_BLOCK ts" "POST_EDIT_FAIL apps/api/src/a.ts"; do "$I" event $e >/dev/null; done
+for e in "HOOK_DENY guard-edit: y" "HOOK_ASK guard-bash: z" "STOP_BLOCK ts" "POST_EDIT_FAIL apps/api/src/a.ts" "STOP_SKIP gate=plan" "STOP_SKIP open-questions" "STOP_SKIP open-questions"; do "$I" event $e >/dev/null; done
 expect_ok   "check: hook イベントを含む audit.log を通す(受領証の順序検査に影響しない)" "$I" check
 out="$("$I" metrics)"
 printf '%s\n' "$out" | grep -Eq '^HOOK_DENY	2$'      && ok "metrics: HOOK_DENY を数える"      || ng "metrics: HOOK_DENY" "$out"
 printf '%s\n' "$out" | grep -Eq '^HOOK_ASK	3$'       && ok "metrics: HOOK_ASK を数える"       || ng "metrics: HOOK_ASK" "$out"
 printf '%s\n' "$out" | grep -Eq '^STOP_BLOCK	1$'     && ok "metrics: STOP_BLOCK を数える"     || ng "metrics: STOP_BLOCK" "$out"
 printf '%s\n' "$out" | grep -Eq '^POST_EDIT_FAIL	1$' && ok "metrics: POST_EDIT_FAIL を数える" || ng "metrics: POST_EDIT_FAIL" "$out"
+printf '%s\n' "$out" | grep -Eq '^STOP_SKIP	3$'                && ok "metrics: STOP_SKIP の合計を数える"          || ng "metrics: STOP_SKIP 合計" "$out"
+printf '%s\n' "$out" | grep -Eq '^STOP_SKIP:gate	1$'           && ok "metrics: STOP_SKIP:gate を数える"           || ng "metrics: STOP_SKIP:gate" "$out"
+printf '%s\n' "$out" | grep -Eq '^STOP_SKIP:open-questions	2$' && ok "metrics: STOP_SKIP:open-questions を数える" || ng "metrics: STOP_SKIP:open-questions" "$out"
 printf '%s\n' "$out" | grep -Eq '^HUMAN_TURN	[1-9]'  && ok "metrics: HUMAN_TURN を数える"     || ng "metrics: HUMAN_TURN" "$out"
 printf '%s\n' "$out" | grep -Eq '^GATE_REJECTED	2$'  && ok "metrics: GATE_REJECTED を数える"  || ng "metrics: GATE_REJECTED" "$out"
 printf '%s\n' "$out" | grep -Eq '^elapsed_sec	[0-9]+$' && ok "metrics: 経過秒を出す(未 close は現在まで)" || ng "metrics: elapsed" "$out"
@@ -126,6 +129,30 @@ expect_ok "close 後は new できる" "$I" new next --scope bugfix
 "$I" new counter --scope feature >/dev/null; human; human
 out="$("$I" metrics)"
 printf '%s\n' "$out" | grep -Eq '^HUMAN_TURN	2$' && ok "metrics: HUMAN_TURN を正確に数える(2 回 → 2)" || ng "metrics: HUMAN_TURN の件数" "$out"
+"$I" close --abandon >/dev/null
+
+# --- halt-reason: Stop hook が verify を skip してよい理由(ADR-0002。600 秒の窓、窓内 3 回)----------------------
+expect_fail "halt-reason: intent が無ければ exit 1" "" bash -c "'$I' halt-reason; [ \$? -ne 0 ] && echo no-reason && exit 1"
+"$I" new halt --scope feature >/dev/null; HD="$("$I" active)"
+"$I" halt-reason >/dev/null 2>&1 && ng "halt-reason: 提示も note も無いのに理由が出た" || ok "halt-reason: 提示も note も無ければ exit 1"
+"$I" gate present intent >/dev/null
+hr() { out="$("$I" halt-reason)"; rc=$?; }   # 出力と終了コードの両方を見る(hook は終了コードで分岐する)
+hr; [ $rc -eq 0 ] && [ "$out" = "gate=intent" ] && ok "halt-reason: gate presented(600 秒以内)で gate=intent(exit 0)" || ng "halt-reason gate" "rc=$rc out=$out"
+age() { sed "s/^[0-9T:Z-]*\(	$1\)/2020-01-01T00:00:00Z\1/" "$HD/audit.log" > "$HD/a.tmp" && mv "$HD/a.tmp" "$HD/audit.log"; }   # age <event 列の正規表現>: 該当行の時刻を過去にする
+age 'GATE_PRESENTED	intent'
+"$I" halt-reason >/dev/null 2>&1 && ng "halt-reason: 601 秒前の提示で理由が出た" || ok "halt-reason: GATE_PRESENTED が 600 秒より古ければ exit 1"
+"$I" note "Open questions" "DoD が満たせない" >/dev/null
+hr; [ $rc -eq 0 ] && [ "$out" = "open-questions" ] && ok "halt-reason: Open questions の note 直後は open-questions(exit 0)" || ng "halt-reason note" "rc=$rc out=$out"
+"$I" gate reject intent "redo" >/dev/null; "$I" gate present intent >/dev/null
+hr; [ $rc -eq 0 ] && [ "$out" = "gate=intent" ] && ok "halt-reason: 提示と note が両方あれば gate= を優先" || ng "halt-reason 優先" "rc=$rc out=$out"
+age 'GATE_PRESENTED	intent'; age 'NOTE	Open questions'
+"$I" halt-reason >/dev/null 2>&1 && ng "halt-reason: 古い note で理由が出た" || ok "halt-reason: note が 600 秒より古ければ exit 1"
+"$I" note "Open questions" "again" >/dev/null
+for _ in 1 2 3; do "$I" event STOP_SKIP open-questions >/dev/null; done
+"$I" halt-reason >/dev/null 2>&1 && ng "halt-reason: 上限 3 回を超えて理由が出た" || ok "halt-reason: 600 秒以内に STOP_SKIP が 3 件あれば exit 1(上限)"
+ln="$(grep -n '	STOP_SKIP	' "$HD/audit.log" | head -n1 | cut -d: -f1)"   # 最初の STOP_SKIP だけ古くする(BSD / GNU 共通の行番号指定)
+sed "${ln}s/^[0-9T:Z-]*/2020-01-01T00:00:00Z/" "$HD/audit.log" > "$HD/a.tmp" && mv "$HD/a.tmp" "$HD/audit.log"
+hr; [ $rc -eq 0 ] && [ "$out" = "open-questions" ] && ok "halt-reason: 600 秒より古い STOP_SKIP は上限に数えない(2 件なら skip 可)" || ng "halt-reason 上限の窓" "rc=$rc $(grep STOP_SKIP "$HD/audit.log")"
 "$I" close --abandon >/dev/null
 
 # --- legacy(state.md に Receipt 無し)は UserPromptSubmit で承認できる ------------------------------------------

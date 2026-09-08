@@ -13,6 +13,13 @@ if printf '%s' "$input" | jq -e '.stop_hook_active == true' >/dev/null 2>&1; the
 root="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 cd "$root" || exit 0
 if git diff --quiet HEAD -- . 2>/dev/null && [ -z "$(git ls-files --others --exclude-standard)" ]; then exit 0; fi
+# 人間に相談するためにターンを終える時(ゲート提示中 / 直近の Open questions、600 秒・3 回まで)は verify を skip する(ADR-0002)。
+# 判定は intent.sh halt-reason。skip は必ず STOP_SKIP として記録する。intent.sh が壊れていれば skip しない(block 側)。
+if reason="$("$root/scripts/intent.sh" halt-reason 2>/dev/null)" && [ -n "$reason" ]; then
+  "$root/scripts/intent.sh" event STOP_SKIP "$reason" >/dev/null 2>&1 || true
+  echo "stop-verify: 人間の応答待ち(${reason})のため verify を skip しました。落ちたテストは CI が受けます。" >&2
+  exit 0
+fi
 if out="$("$root/scripts/verify.sh" --changed 2>&1)"; then exit 0; fi
 # block を記録する(Phase 10、improvement-plan H1)。detail は失敗した段。失敗しても判定(exit 2)は変えない。
 failed="$(printf '%s\n' "$out" | sed -n 's/^✘ verify failed: //p' | head -n1)"
