@@ -32,3 +32,6 @@
 2026-09-08T04:02:01Z	HOOK_DENY	guard-bash: 再帰的削除・特権操作は禁止です: rm -rf /tmp/review-consent echo done
 2026-09-08T04:02:53Z	HUMAN_TURN	UserPromptSubmit
 2026-09-08T04:03:43Z	NOTE	Interpretations
+2026-09-08T04:11:30Z	HUMAN_TURN	UserPromptSubmit
+2026-09-08T04:16:08Z	HUMAN_TURN	PostToolUse:AskUserQuestion
+2026-09-08T04:16:15Z	HOOK_ASK	guard-bash: intent の受領証・状態・監査ログを直接操作しようとしています。承認は人間の応答(hook が記録)でのみ成立します。意図した操作か確認してください。
