@@ -242,6 +242,8 @@ Phase 1〜4 が本質。ここまでで 7 割の価値が出る。
 - **新しい subagent は作成直後には Agent tool で呼べない**(Phase 9 で plan-reviewer を作った直後は "not found"。数十分後に認識された)。skill は即時。待てない時は general-purpose agent に定義ファイルを読ませて代用する。
 - **active な intent が残っていると、無関係な小修正でも apps/ への書込が deny される**。intent は close するか、`--abandon` で放棄する。SessionStart が状態を出すので気づける。
 
+改善項目(優先度・層・DoD 付き)は `docs/improvement-plan.md` に集約する(2026-09-08)。
+
 ## 11. 環境メモ(2026-09-05 時点)
 
 - あり: node 24, pnpm 11, uv 0.6, python 3.13, docker 27, terraform 1.14

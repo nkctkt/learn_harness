@@ -19,6 +19,8 @@ root="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 rel="${path#"$root"/}"
 
 decide() {
+  # 判定を記録する(Phase 10、improvement-plan H1)。判定 JSON を出す直前に 1 回だけ。失敗しても判定は変えない。
+  "$root/scripts/intent.sh" event "$([ "$1" = deny ] && echo HOOK_DENY || echo HOOK_ASK)" "guard-edit: ${2:0:80}" >/dev/null 2>&1 || true
   jq -n --arg d "$1" --arg reason "$2" '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:$d,permissionDecisionReason:$reason}}'
   exit 0
 }

@@ -25,6 +25,9 @@ for f in .claude/agents/*.md; do
   fm="$(front "$f")"
   printf '%s\n' "$fm" | grep -q '^name: ' && printf '%s\n' "$fm" | grep -q '^description: ' && printf '%s\n' "$fm" | grep -q '^tools: ' && ok "agent frontmatter: $f" || ng "agent frontmatter (name/description/tools) が無い: $f"
 done
+# 3b. /retro の計測欄はハーネスの判定回数を読む(Phase 10、improvement-plan H1。retro で摩擦を数えない経路を塞ぐ)
+r=.claude/skills/retro/SKILL.md
+grep -q 'intent.sh metrics' "$r" && grep -q 'deny' "$r" && grep -q 'Stop block' "$r" && ok "retro skill が intent.sh metrics(deny / Stop block)を読む" || ng "retro skill の計測欄に metrics / deny / Stop block が無い: $r"
 # 4. テンプレートとのドリフト。固有値を持つもの(targets.sh、sec.sh、security.yml、biome 等)は対象外(Exercise 11)。
 if [ -d "$T" ]; then
   same=(.claude/hooks/*.sh .claude/skills/*/SKILL.md .claude/agents/*.md .claude/rules/harness.md .claude/rules/intents.md .claude/settings.json

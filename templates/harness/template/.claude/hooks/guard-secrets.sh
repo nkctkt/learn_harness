@@ -70,6 +70,8 @@ forbidden_path() { # $1 = パス。置いてはいけないファイルなら 0
 }
 
 block() { # $1 = 理由, $2 = 該当行(複数行)。パイプで呼ぶと exit がサブシェルに閉じるので引数で渡す
+  # 判定を記録する(Phase 10、improvement-plan H1)。exit 2 の直前に 1 回だけ。失敗しても判定は変えない。該当行(秘密)は記録しない。
+  "$root/scripts/intent.sh" event HOOK_DENY "guard-secrets: ${1:0:80}" >/dev/null 2>&1 || true
   {
     echo "guard-secrets: 拒否しました。$1"
     [ -n "${2:-}" ] && printf '%s\n' "$2"

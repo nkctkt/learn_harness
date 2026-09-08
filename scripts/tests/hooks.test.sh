@@ -46,11 +46,62 @@ expect allow "計画未承認: Bash で docs に書く" guard-bash.sh "$(bash_js
 
 # --- 受領証・状態・監査ログは正規の入口以外から触れない -----------------------------------------------------
 D="$("$I" active)"; REL="docs/intents/$(basename "$D")"
+# 上の deny 4 件(Write ×3 + Bash ×1)が判定として記録されている(Phase 10、AC1)
+[ "$(grep -c '	HOOK_DENY	guard-plan-approval: ' "$D/audit.log")" -eq 3 ] && ok "guard-plan-approval の deny が HOOK_DENY として記録される" || ng "guard-plan-approval の記録" "$(grep HOOK_ "$D/audit.log")"
+grep -q '	HOOK_DENY	guard-bash: ' "$D/audit.log" && ok "guard-bash の deny が HOOK_DENY として記録される" || ng "guard-bash の記録" "$(grep HOOK_ "$D/audit.log")"
 expect deny "guard-edit: state.md への Write" guard-edit.sh "$(edit_json "$REL/state.md")"
 expect deny "guard-edit: audit.log への Write" guard-edit.sh "$(edit_json "$REL/audit.log")"
 expect allow "guard-edit: intent.md への Write は許可" guard-edit.sh "$(edit_json "$REL/intent.md")"
 expect ask  "guard-bash: audit.log への追記" guard-bash.sh "$(bash_json "echo x >> $REL/audit.log")"
 expect ask  "guard-bash: Agent 自身による human-turn" guard-bash.sh "$(bash_json 'scripts/intent.sh human-turn me')"
+expect ask  "guard-bash: Agent 自身による event(判定の捏造)" guard-bash.sh "$(bash_json 'scripts/intent.sh event HOOK_DENY x')"
+expect allow "guard-bash: metrics は正規の入口" guard-bash.sh "$(bash_json 'scripts/intent.sh metrics')"
+grep -q '	HOOK_ASK	guard-bash: ' "$D/audit.log" && ok "guard-bash の ask が HOOK_ASK として記録される" || ng "guard-bash ask の記録" "$(grep HOOK_ "$D/audit.log")"
+grep -q '	HOOK_DENY	guard-edit: ' "$D/audit.log" && ok "guard-edit の deny が HOOK_DENY として記録される" || ng "guard-edit deny の記録" "$(grep HOOK_ "$D/audit.log")"
+expect ask  "guard-edit: settings.json への Write は ask" guard-edit.sh "$(edit_json .claude/settings.json)"
+grep -q '	HOOK_ASK	guard-edit: ' "$D/audit.log" && ok "guard-edit の ask が HOOK_ASK として記録される" || ng "guard-edit ask の記録" "$(grep HOOK_ "$D/audit.log")"
+expect block "guard-secrets: 秘密鍵のファイル名への Write は block" guard-secrets.sh "$(edit_json secrets/server.pem)"
+grep -q '	HOOK_DENY	guard-secrets: ' "$D/audit.log" && ok "guard-secrets の block が HOOK_DENY として記録される" || ng "guard-secrets の記録" "$(grep HOOK_ "$D/audit.log")"
+before="$(grep -c '	HOOK_' "$D/audit.log")"
+expect allow "guard-edit: 許可される Write" guard-edit.sh "$(edit_json docs/x.md)"
+expect allow "guard-bash: 許可される Bash" guard-bash.sh "$(bash_json 'ls apps')"
+[ "$(grep -c '	HOOK_' "$D/audit.log")" -eq "$before" ] && ok "allow は記録されない(ノイズ防止)" || ng "allow が記録されている" "$(grep HOOK_ "$D/audit.log")"
+
+# --- 記録が失敗しても判定は変わらない(AC6: fail-closed を壊さない)----------------------------------------------
+chmod a-w "$D/audit.log"
+expect deny "audit.log が書込不可でも guard-edit は deny" guard-edit.sh "$(edit_json "$REL/state.md")"
+expect ask  "audit.log が書込不可でも guard-bash は ask" guard-bash.sh "$(bash_json 'scripts/intent.sh human-turn me')"
+expect block "audit.log が書込不可でも guard-secrets は block" guard-secrets.sh "$(edit_json secrets/server.pem)"
+expect ask  "audit.log が書込不可でも guard-edit は ask" guard-edit.sh "$(edit_json .claude/settings.json)"
+chmod u+w "$D/audit.log"
+
+# --- intent が無い時はローカルの metrics.log に記録する(AC3)-------------------------------------------------------
+export HARNESS_METRICS_LOG="$TMP/metrics.log"
+mkdir -p "$TMP/no-intents"
+got="$(printf '%s' "$(edit_json "$REL/state.md")" | INTENTS_DIR="$TMP/no-intents" "$H/guard-edit.sh" | jq -r '.hookSpecificOutput.permissionDecision')"
+[ "$got" = deny ] && grep -q '	HOOK_DENY	guard-edit: ' "$HARNESS_METRICS_LOG" && ok "intent 無しの deny は metrics.log に記録される" || ng "metrics.log への記録 (decision=$got)" "$(cat "$HARNESS_METRICS_LOG" 2>&1)"
+
+# --- Stop hook と PostToolUse hook の失敗も記録する(AC2)-------------------------------------------------------------
+# 本物の verify.sh は走らせない。失敗する verify.sh を持つ最小の git リポジトリを CLAUDE_PROJECT_DIR にする。
+FAKE="$TMP/fake-root"; mkdir -p "$FAKE/scripts"
+cp "$I" "$FAKE/scripts/intent.sh"
+printf '#!/usr/bin/env bash\necho "  ✘ vitest (apps/api)"; exit 1\n' > "$FAKE/scripts/verify.sh"; chmod +x "$FAKE/scripts/verify.sh"
+( cd "$FAKE" && git init -q && git -c user.email=t@example.com -c user.name=t commit -q --allow-empty -m init && echo x > changed.txt )
+out="$(printf '{"hook_event_name":"Stop","stop_hook_active":false}' | CLAUDE_PROJECT_DIR="$FAKE" "$H/stop-verify.sh" 2>&1)"; rc=$?
+[ $rc -eq 2 ] && ok "stop-verify: verify 失敗で exit 2(判定は不変)" || ng "stop-verify の exit code ($rc)" "$out"
+grep -q '	STOP_BLOCK	' "$D/audit.log" && ok "stop-verify の block が STOP_BLOCK として記録される" || ng "STOP_BLOCK が無い" "$(tail -n3 "$D/audit.log")"
+out="$(printf '{"hook_event_name":"PostToolUse","tool_name":"Edit","tool_input":{"file_path":"%s/apps/api/src/a.ts"}}' "$FAKE" | CLAUDE_PROJECT_DIR="$FAKE" "$H/post-edit-check.sh")"
+printf '%s' "$out" | jq -e '.hookSpecificOutput.additionalContext' >/dev/null 2>&1 && ok "post-edit-check: 失敗を additionalContext で返す(判定は不変)" || ng "post-edit-check の出力" "$out"
+grep -q '	POST_EDIT_FAIL	' "$D/audit.log" && ok "post-edit-check の失敗が POST_EDIT_FAIL として記録される" || ng "POST_EDIT_FAIL が無い" "$(tail -n3 "$D/audit.log")"
+# intent.sh 自体が壊れていても(exit 1)判定は変わらない(AC6 の第 2 形。chmod は「書けない」、これは「記録の入口が無い」)
+printf '#!/usr/bin/env bash\nexit 1\n' > "$FAKE/scripts/intent.sh"
+printf '{"hook_event_name":"Stop","stop_hook_active":false}' | CLAUDE_PROJECT_DIR="$FAKE" "$H/stop-verify.sh" >/dev/null 2>&1; rc=$?
+[ $rc -eq 2 ] && ok "intent.sh が壊れていても stop-verify は exit 2" || ng "intent.sh 故障時の stop-verify ($rc)"
+out="$(printf '{"hook_event_name":"PostToolUse","tool_name":"Edit","tool_input":{"file_path":"%s/apps/api/src/a.ts"}}' "$FAKE" | CLAUDE_PROJECT_DIR="$FAKE" "$H/post-edit-check.sh")"
+printf '%s' "$out" | jq -e '.hookSpecificOutput.additionalContext' >/dev/null 2>&1 && ok "intent.sh が壊れていても post-edit-check は指摘を返す" || ng "intent.sh 故障時の post-edit-check" "$out"
+mkdir -p "$FAKE/docs/intents"
+got="$(printf '{"tool_name":"Write","tool_input":{"file_path":"%s/.claude/settings.json","content":"x"}}' "$FAKE" | CLAUDE_PROJECT_DIR="$FAKE" "$H/guard-edit.sh" | jq -r '.hookSpecificOutput.permissionDecision')"
+[ "$got" = ask ] && ok "intent.sh が壊れていても guard-edit は ask" || ng "intent.sh 故障時の guard-edit ($got)"
 expect allow "guard-bash: gate present は正規の入口" guard-bash.sh "$(bash_json 'scripts/intent.sh gate present intent')"
 expect allow "guard-bash: status は正規の入口" guard-bash.sh "$(bash_json 'scripts/intent.sh status')"
 

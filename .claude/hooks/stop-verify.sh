@@ -14,6 +14,9 @@ root="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 cd "$root" || exit 0
 if git diff --quiet HEAD -- . 2>/dev/null && [ -z "$(git ls-files --others --exclude-standard)" ]; then exit 0; fi
 if out="$("$root/scripts/verify.sh" --changed 2>&1)"; then exit 0; fi
+# block を記録する(Phase 10、improvement-plan H1)。detail は失敗した段。失敗しても判定(exit 2)は変えない。
+failed="$(printf '%s\n' "$out" | sed -n 's/^✘ verify failed: //p' | head -n1)"
+"$root/scripts/intent.sh" event STOP_BLOCK "${failed:-verify}" >/dev/null 2>&1 || true
 {
   echo "完了前チェック(scripts/verify.sh --changed)が失敗しました。根本原因を直してから完了してください。"
   echo "テストの skip / 無効化、抑制コメント、閾値の緩和で通すことは禁止です。"

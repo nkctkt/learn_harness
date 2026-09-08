@@ -25,6 +25,8 @@ case "$rel" in
   *) exit 0 ;;
 esac
 deny() {
+  # 判定を記録する(Phase 10、improvement-plan H1)。判定 JSON を出す直前に 1 回だけ。失敗しても判定は変えない。
+  "$root/scripts/intent.sh" event HOOK_DENY "guard-plan-approval: ${1:0:80}" >/dev/null 2>&1 || true
   jq -n --arg r "$1" '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:$r}}'
   exit 0
 }

@@ -15,7 +15,9 @@ AI-DLC の原則: **stage(手順)は不変、harness は可変。** 学びは会
 
 1. **材料を読む**
    - `memory.md`(Interpretations / Deviations / Tradeoffs / Open questions)
-   - `audit.log`: `GATE_REJECTED` の回数と理由(計画の精度)、`HUMAN_TURN` の数(人間の手間)、unit の start → done の間隔
+   - `scripts/intent.sh metrics`: ハーネスが Agent を止めた回数(`HOOK_DENY` / `HOOK_ASK` / `STOP_BLOCK` / `POST_EDIT_FAIL`)、`HUMAN_TURN`(人間の手間)、`GATE_REJECTED`(計画の精度)、`elapsed_sec`(作成 → close)。
+     deny / ask の内訳は `grep HOOK_ audit.log` で hook 名と理由を読む。**誤検知(止める必要が無かった deny)は行き先「hook / verify」の候補**
+   - `audit.log`: `GATE_REJECTED` の理由、unit の start → done の間隔
    - PR のレビューコメント(`gh pr view <n> --comments`)と、`/fix-ci` を使ったなら CI の失敗
 2. **学びを 1 行ずつ列挙し、行き先を決める**(判断基準は「次の Agent がそれを自動で読むか、機械が強制するか」)
 
@@ -37,8 +39,9 @@ AI-DLC の原則: **stage(手順)は不変、harness は可変。** 学びは会
    ## 何が起きたか(3〜5 行)
    ## 学びと行き先
    | 学び | 行き先 | 変更(パス) |
-   ## 計測
-   gate reject: N 回 / HUMAN_TURN: N 回 / unit 数: N / CI 失敗: N 回
+   ## 計測(`scripts/intent.sh metrics` の出力を貼る)
+   deny: N 回(うち誤検知 N)/ ask: N 回 / Stop block: N 回 / post-edit 失敗: N 回 / HUMAN_TURN: N 回 / gate reject: N 回 / 経過: N 分
+   unit 数: N / CI 失敗: N 回
    ## 次の intent への申し送り(Open questions の残り)
    ```
    incident なら `/incident` のポストモーテム表をここに含める。

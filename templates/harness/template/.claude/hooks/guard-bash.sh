@@ -15,11 +15,15 @@ input="$(cat)"
 cmd="$(printf '%s' "$input" | jq -r '.tool_input.command // empty')"
 [ -z "$cmd" ] && exit 0
 
+# 判定を記録する(Phase 10、improvement-plan H1)。判定 JSON を出す直前に 1 回だけ呼ぶ。失敗しても判定は変えない。
+record() { "${CLAUDE_PROJECT_DIR:-.}/scripts/intent.sh" event "$1" "guard-bash: ${2:0:80}" >/dev/null 2>&1 || true; }
 deny() {
+  record HOOK_DENY "$1"
   jq -n --arg reason "$1" '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:$reason}}'
   exit 0
 }
 ask() {
+  record HOOK_ASK "$1"
   jq -n --arg reason "$1" '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"ask",permissionDecisionReason:$reason}}'
   exit 0
 }
@@ -45,8 +49,8 @@ if printf '%s' "$cmd" | grep -Eq '(curl|wget)[^|]*\|[[:space:]]*(sudo[[:space:]]
   deny "リモートスクリプトのパイプ実行は禁止です。パッケージマネージャ経由で導入してください。"
 fi
 # 6) intent の状態・監査ログ・受領証の直接操作(Phase 9)。scripts/intent.sh の正規の入口以外は ask。
-#    human-turn は hook 専用(Agent が呼べば承認の捏造)。state.md / audit.log への書込も同様。
-if printf '%s' "$cmd" | grep -Eq 'intent\.sh[[:space:]]+human-turn|docs/intents/[^[:space:]]*/(state\.md|audit\.log)' && printf '%s' "$cmd" | grep -Eq '(human-turn|>|>>|sed[[:space:]]+-i|tee[[:space:]]|mv[[:space:]]|rm[[:space:]]|cp[[:space:]])'; then
+#    human-turn / event は hook 専用(Agent が呼べば承認・判定の捏造)。state.md / audit.log への書込も同様。
+if printf '%s' "$cmd" | grep -Eq 'intent\.sh[[:space:]]+(human-turn|event)|docs/intents/[^[:space:]]*/(state\.md|audit\.log)' && printf '%s' "$cmd" | grep -Eq '(human-turn|intent\.sh[[:space:]]+event|>|>>|sed[[:space:]]+-i|tee[[:space:]]|mv[[:space:]]|rm[[:space:]]|cp[[:space:]])'; then
   ask "intent の受領証・状態・監査ログを直接操作しようとしています。承認は人間の応答(hook が記録)でのみ成立します。意図した操作か確認してください。"
 fi
 # 7) 計画未承認のあいだの保護領域への Bash 書込(guard-plan-approval.sh の Bash 版)。

@@ -33,6 +33,8 @@ services/shortener/bin/
 # Claude Code local
 .claude/settings.local.json
 CLAUDE.local.md
+# intent 外のハーネス判定の記録(scripts/intent.sh event)。ローカル専用
+.claude/metrics.log
 
 # Coverage outputs
 .coverage
