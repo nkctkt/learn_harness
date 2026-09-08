@@ -112,7 +112,7 @@ Verdict: **NOT-READY**(承認前に直す、が正しく機能した)。
 
 ## 7. 残課題
 
-- この intent のゲートを人間が通す(`gate approve intent` → `stage inception` → `gate approve plan` → `stage construction` → 各 unit を start / done → `stage handoff`)。AC6。
+- ~~この intent のゲートを人間が通す~~ → 完了(2026-09-08、PR #21 merge 後)。人間の発言と AskUserQuestion の応答が hook により HUMAN_TURN として記録され、その後に `gate approve` が通った。`audit.log` に GATE_PRESENTED → HUMAN_TURN ×3 → GATE_APPROVED が並ぶ。retro.md を書いて close。
 - intent を必須にするか(`HARNESS_REQUIRE_INTENT=1`)。まず任意で運用し、次の retro で「intent 無しで apps を触った回数」を数えて決める。
 - `/retro` の学びの振り分けを機械化する(AI-DLC の `aidlc-learnings.ts` 相当)。今は手順(skill)のみ。
 - 複数 intent の並行(branch = intent の対応付け)。
