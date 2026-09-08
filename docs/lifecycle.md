@@ -20,7 +20,7 @@
 ```
 
 - **stage** は `ideation → inception → construction → handoff → operation`。`scripts/intent.sh stage <x>` が順序を検査する(inception は intent 承認後、construction は plan 承認後、handoff は全 unit 完了後)。
-- **ゲートは 2 択**で提示し、提示したらターンを終える。承認は人間の応答(hook が書く `HUMAN_TURN`)が提示より後にある時だけ記録できる。
+- **ゲートは 2 択**の AskUserQuestion(質問文に `[gate <g>]`)で出し、回答を待つ。承認は、提示より後の `[gate <g>]` への最新の回答が Approve(hook が書く `HUMAN_TURN … answer=Approve gate=<g>`)の時だけ記録できる(Phase 10 H2、`Receipt: consent`)。Phase 9 の記録(`Receipt` 無し)は「提示より後に人間の応答があること」の旧規則のまま。
 
 ## 2. 要素の一覧と「無いと何が起きるか」
 
@@ -83,12 +83,12 @@ Phase 9 で「指示 → hook」に変換したのは 2 つ(計画承認前の�
 `scripts/intent.sh check`(`verify.sh --only docs`)が全 intent について検査する:
 
 1. `state.md` の必須フィールド、`intent.md` の 4 節、(construction 以降なら)`plan.md` の 3 節
-2. `GATE_APPROVED` の前に `GATE_PRESENTED` があり、その間に `HUMAN_TURN` がある
+2. `GATE_APPROVED` の前に `GATE_PRESENTED` があり、その間に `HUMAN_TURN` がある。`Receipt: consent` なら、その間の `[gate <g>]` への最新の回答が `answer=Approve`(在席ではなく同意)
 3. `state.md` の gate 状態と `audit.log` の最終 gate イベントが一致する
 4. stage と承認の順序(inception は intent 承認後、construction は plan 承認後)
 5. `plan.md` の `units:` ブロックが宣言済み unit にだけ依存し、循環が無い
 
-検出できないもの: ローカルで `audit.log` に HUMAN_TURN を書き足す改竄(全ローカル層と同じ)。PR レビューで `docs/intents/` の diff を読むのが最後の防衛線。承認した人間が中身を読んだかどうか。
+検出できないもの: ローカルで `audit.log` に HUMAN_TURN(`answer=Approve` を含む)を書き足す改竄(全ローカル層と同じ)。PR レビューで `docs/intents/` の diff を読むのが最後の防衛線。承認した人間が中身を読んだかどうか。
 
 ## 5. AI-DLC との差(意図的)
 

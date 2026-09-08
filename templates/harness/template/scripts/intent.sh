@@ -4,7 +4,7 @@
 #   scripts/intent.sh new <slug> [--scope feature|bugfix|refactor|harness]   intent を作る(docs/intents/<YYMMDD>-<slug>/)
 #   scripts/intent.sh active | status                                        有効な intent のパス / 要約
 #   scripts/intent.sh gate present <intent|plan>                             ゲートを提示した(このあとターンを終えて人間を待つ)
-#   scripts/intent.sh gate approve <intent|plan>                             人間の応答(HUMAN_TURN)が提示後にあれば承認を記録
+#   scripts/intent.sh gate approve <intent|plan>                             [gate <g>] AskUserQuestion への最新の回答が Approve なら承認を記録
 #   scripts/intent.sh gate reject  <intent|plan> "<reason>"                  差し戻し
 #   scripts/intent.sh stage <ideation|inception|construction|handoff|operation>
 #   scripts/intent.sh unit add <id> "<desc>" | start <id> | done <id>
@@ -19,6 +19,8 @@
 #   - 状態は docs/intents/<id>/state.md(人が読める)と audit.log(追記専用、TSV: ts / event / detail)。両方 Git に入れる。
 #   - 承認の受領証(HUMAN_TURN)は hook(UserPromptSubmit / AskUserQuestion)だけが書く。Agent は gate approve で「読む」だけ。
 #     → 提示(GATE_PRESENTED)より後に HUMAN_TURN が無ければ承認できない。Agent が自分で承認を捏造する経路を塞ぐ。
+#   - Receipt: consent の intent(Phase 10 H2 以降に new で作ったもの)は、[gate <g>] 付き AskUserQuestion への
+#     最新の回答が answer=Approve でなければ承認できない(在席ではなく同意)。Receipt 無しの旧記録は従来の規則。
 #   - state.md / audit.log への直接書込は guard-edit.sh が deny、Bash 経由は guard-bash.sh が ask にする。
 #   - ローカルの記録は改竄できる(全ローカル層と同じ)。check を CI で回して、改竄を PR で露見させる。
 #   - ハーネスの判定(deny / ask / Stop block)は hook が `event` で記録する(Phase 10、improvement-plan H1)。
@@ -79,6 +81,7 @@ cmd_new() {
 - Stage: ideation
 - Gate intent: pending
 - Gate plan: pending
+- Receipt: consent
 - Created: $(now)
 
 ## Units
@@ -161,14 +164,30 @@ cmd_gate() {
     present)
       [ -s "$dir/$name.md" ] || die "$dir/$name.md が空です。提示する前に中身を書いてください"
       set_field "Gate $name" presented "$dir"; audit GATE_PRESENTED "$name" "$dir"
-      echo "gate '$name' を提示しました。**ここでターンを終えて**人間の応答を待ってください(Approve / Request Changes の 2 択)。" ;;
+      if [ "$(field Receipt "$dir")" = consent ]; then
+        echo "gate '$name' を提示しました。質問文に [gate $name] を含む AskUserQuestion(Approve / Request Changes の 2 択)で人間に聞き、回答が返った同じターンで gate approve / reject を呼んでください。テキストの返答は承認になりません。"
+      else
+        echo "gate '$name' を提示しました。**ここでターンを終えて**人間の応答を待ってください(Approve / Request Changes の 2 択)。"
+      fi ;;
     approve)
       [ "$(field "Gate $name" "$dir")" = presented ] || die "gate '$name' は presented ではありません(現在: $(field "Gate $name" "$dir"))。先に gate present"
       local p h
       p="$(last_line_no GATE_PRESENTED "$name" "$dir")"; [ -n "$p" ] || die "監査ログに GATE_PRESENTED $name がありません"
-      h="$(grep -n '	HUMAN_TURN	' "$dir/audit.log" | tail -n1 | cut -d: -f1)"
-      if [ -z "$h" ] || [ "$h" -le "$p" ]; then
-        die "承認できません: gate '$name' を提示した後に人間の応答(HUMAN_TURN)が記録されていません。ターンを終えて人間の返答を待ってください。Agent が自分で承認することはできません。"
+      if [ "$(field Receipt "$dir")" = consent ]; then
+        # 同意の受領証(Phase 10 H2): 提示より後の、このゲート宛て(gate=<name>)の回答のうち最新が Approve であること。
+        # gate= の無い HUMAN_TURN(UserPromptSubmit、曖昧点確認の回答)は無視する。Approve の後に人間が発言しても詰まらない。
+        local last; last="$(tail -n +"$((p+1))" "$dir/audit.log" | grep "	HUMAN_TURN	.* gate=$name\$" | tail -n1 | cut -f3)"
+        case "$last" in
+          *"answer=Approve gate=$name") ;;
+          "") die "承認できません: gate '$name' を提示した後に、この gate 宛ての回答がありません。質問文に [gate $name] を含む AskUserQuestion(Approve / Request Changes)で人間に聞き、回答が返った同じターンで gate approve を呼んでください。テキストの返答は承認になりません。" ;;
+          *) die "承認できません: gate '$name' への最新の回答は Approve ではありません($last)。直して gate present $name からやり直してください。" ;;
+        esac
+      else
+        # 旧形式(Receipt 無し、Phase 9 の記録): 提示より後に人間の応答があればよい
+        h="$(grep -n '	HUMAN_TURN	' "$dir/audit.log" | tail -n1 | cut -d: -f1)"
+        if [ -z "$h" ] || [ "$h" -le "$p" ]; then
+          die "承認できません: gate '$name' を提示した後に人間の応答(HUMAN_TURN)が記録されていません。ターンを終えて人間の返答を待ってください。Agent が自分で承認することはできません。"
+        fi
       fi
       set_field "Gate $name" "approved $(now)" "$dir"; audit GATE_APPROVED "$name" "$dir"
       echo "gate '$name' approved."
@@ -289,7 +308,12 @@ cmd_check() {
       local a; for a in $approved_lines; do
         local p; p="$(head -n "$a" "$d/audit.log" | grep -n "	GATE_PRESENTED	$g$" | tail -n1 | cut -d: -f1)"
         [ -n "$p" ] || { err "gate $g: 提示(GATE_PRESENTED)無しに承認されています(audit.log:$a)"; continue; }
-        sed -n "$((p+1)),$((a-1))p" "$d/audit.log" | grep -q '	HUMAN_TURN	' || err "gate $g: 提示と承認の間に人間の応答(HUMAN_TURN)がありません(audit.log:$p-$a)"
+        if [ "$(field Receipt "$d")" = consent ]; then
+          local last; last="$(sed -n "$((p+1)),$((a-1))p" "$d/audit.log" | grep "	HUMAN_TURN	.* gate=$g\$" | tail -n1 | cut -f3)"
+          case "$last" in *"answer=Approve gate=$g") ;; *) err "gate $g: 提示と承認の間に [gate $g] への Approve(AskUserQuestion)がありません(audit.log:${p}-${a}、最新: ${last:-なし})" ;; esac
+        else
+          sed -n "$((p+1)),$((a-1))p" "$d/audit.log" | grep -q '	HUMAN_TURN	' || err "gate $g: 提示と承認の間に人間の応答(HUMAN_TURN)がありません(audit.log:$p-$a)"
+        fi
       done
       # state.md と audit.log の整合
       local st; st="$(field "Gate $g" "$d")"

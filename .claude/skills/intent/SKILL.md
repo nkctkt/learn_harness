@@ -28,10 +28,11 @@ argument-hint: "<slug> [--scope feature|bugfix|refactor|harness]"
    scripts/intent.sh gate present intent
    ```
    人間に見せるのは 3 つ: 作ったもの(`docs/intents/<id>/intent.md`)、特に見てほしい所(スコープ外と HITL)、承認後に起きること(`/plan-units` で分解と計画)。
-   選択肢は **Approve / Request Changes の 2 つ**。**ここでターンを終える。** 同じターンで approve しない(hook が記録する人間の応答が無いと `intent.sh` が拒否する)。
-5. **人間の応答後**
+   **AskUserQuestion** で聞く。質問文の先頭に `[gate intent]` を書き(hook がこの印で受領証を作る)、選択肢は **Approve / Request Changes の 2 つだけ**。
+   ここで人間の回答を待つ(= 「ターンを終える」の意味)。テキストで提示して人間に「approve」と打ってもらっても承認にならない(hook が `answer=` を書かないため)。
+5. **回答が返った同じターンで**(人間の追加入力を待たずに)
    - Approve → `scripts/intent.sh gate approve intent` → `scripts/intent.sh stage inception` → `/plan-units`
-   - Request Changes → `scripts/intent.sh gate reject intent "<理由>"` → 直して 4 へ
+   - Request Changes → `scripts/intent.sh gate reject intent "<理由>"` → 直して 4 へ(再提示。古い Approve は使えない)
 
 ## やらないこと
 

@@ -11,7 +11,9 @@ ok()   { n=$((n+1)); echo "  ✔ $1"; }
 ng()   { n=$((n+1)); fail=1; echo "  ✘ $1"; [ -n "${2:-}" ] && printf '%s\n' "$2" | sed 's/^/      /'; }
 expect_ok()   { local name="$1"; shift; local out; if out="$("$@" 2>&1)"; then ok "$name"; else ng "$name (expected success)" "$out"; fi; }
 expect_fail() { local name="$1" want="$2"; shift 2; local out; if out="$("$@" 2>&1)"; then ng "$name (expected failure)" "$out"; elif printf '%s' "$out" | grep -q -- "$want"; then ok "$name"; else ng "$name (wrong message)" "$out"; fi; }
-human() { "$I" human-turn test >/dev/null; }
+human() { "$I" human-turn UserPromptSubmit >/dev/null; }                                              # 在席のみ(承認には使えない)
+approve() { "$I" human-turn "PostToolUse:AskUserQuestion answer=Approve gate=$1" >/dev/null; }          # [gate $1] への Approve
+reject()  { "$I" human-turn "PostToolUse:AskUserQuestion answer=Request Changes gate=$1" >/dev/null; }
 
 echo "[intent.test]"
 # --- 作成 -----------------------------------------------------------------------------------------
@@ -25,12 +27,22 @@ expect_fail "active が 2 つになる new は拒否" "既にあります" "$I" 
 # --- 承認ゲート: 人間の在席が無い承認は拒否される -------------------------------------------------------
 expect_fail "提示前の承認は拒否" "presented ではありません" "$I" gate approve intent
 expect_ok   "gate present intent" "$I" gate present intent
-expect_fail "提示直後(HUMAN_TURN 無し)の承認は拒否" "人間の応答" "$I" gate approve intent
+grep -q '^- Receipt: consent$' "$D/state.md" && ok "new は state.md に Receipt: consent を書く" || ng "Receipt が無い"
+expect_fail "consent: 提示直後(回答無し)の承認は拒否" "gate intent" "$I" gate approve intent
 human
-expect_ok   "HUMAN_TURN の後は承認できる" "$I" gate approve intent
+expect_fail "consent: UserPromptSubmit だけでは承認できない(理由に AskUserQuestion と [gate intent])" "\[gate intent\]" "$I" gate approve intent
+reject intent
+expect_fail "consent: Request Changes では承認できない" "Approve ではありません" "$I" gate approve intent
+approve plan
+expect_fail "consent: 別ゲート(plan)の Approve では intent を承認できない(intent 宛ての最新は Request Changes のまま)" "Approve ではありません" "$I" gate approve intent
+approve intent
+expect_ok   "consent: [gate intent] への Approve で承認できる(Request Changes の後の Approve が最新)" "$I" gate approve intent
 grep -q '^- Gate intent: approved ' "$D/state.md" && ok "state.md に承認時刻が入る" || ng "state.md の承認が無い"
-expect_fail "古い HUMAN_TURN は再利用できない(再提示後に承認)" "人間の応答" bash -c "'$I' gate reject intent 'redo' >/dev/null && '$I' gate present intent >/dev/null && '$I' gate approve intent"
-human; expect_ok "再提示 → 人間の応答 → 承認" "$I" gate approve intent
+expect_fail "古い Approve は再利用できない(再提示後に承認)" "回答がありません" bash -c "'$I' gate reject intent 'redo' >/dev/null && '$I' gate present intent >/dev/null && '$I' gate approve intent"
+approve intent; human
+expect_ok "consent: Approve の後に人間が発言(UserPromptSubmit)しても承認できる" "$I" gate approve intent
+expect_fail "consent: Approve の後に Request Changes が来ると承認できない" "Approve ではありません" bash -c "'$I' gate reject intent 'again' >/dev/null && '$I' gate present intent >/dev/null && '$I' human-turn 'PostToolUse:AskUserQuestion answer=Approve gate=intent' >/dev/null && '$I' human-turn 'PostToolUse:AskUserQuestion answer=Request Changes gate=intent' >/dev/null && '$I' gate approve intent"
+approve intent; expect_ok "再提示 → Approve → 承認" "$I" gate approve intent
 
 # --- 段階の順序: 計画承認前に construction へ進めない --------------------------------------------------
 expect_fail "plan 未承認で construction は拒否" "gate plan の承認" "$I" stage construction
@@ -59,7 +71,7 @@ u1 が縦串。
 EOF
 expect_ok "gate present plan" "$I" gate present plan
 expect_fail "unit start は construction でのみ" "stage construction" bash -c "'$I' unit add u1-skeleton 'x' >/dev/null && '$I' unit start u1-skeleton"
-human; expect_ok "gate approve plan" "$I" gate approve plan
+approve plan; expect_ok "gate approve plan" "$I" gate approve plan
 expect_ok "stage construction" "$I" stage construction
 expect_ok "unit add" "$I" unit add u2-feature "feature"
 expect_fail "unit id の形式" "形式" "$I" unit add bad "x"
@@ -93,12 +105,15 @@ printf '%s\n' "$out" | grep -Eq '^HOOK_ASK	3$'       && ok "metrics: HOOK_ASK �
 printf '%s\n' "$out" | grep -Eq '^STOP_BLOCK	1$'     && ok "metrics: STOP_BLOCK を数える"     || ng "metrics: STOP_BLOCK" "$out"
 printf '%s\n' "$out" | grep -Eq '^POST_EDIT_FAIL	1$' && ok "metrics: POST_EDIT_FAIL を数える" || ng "metrics: POST_EDIT_FAIL" "$out"
 printf '%s\n' "$out" | grep -Eq '^HUMAN_TURN	[1-9]'  && ok "metrics: HUMAN_TURN を数える"     || ng "metrics: HUMAN_TURN" "$out"
-printf '%s\n' "$out" | grep -Eq '^GATE_REJECTED	1$'  && ok "metrics: GATE_REJECTED を数える"  || ng "metrics: GATE_REJECTED" "$out"
+printf '%s\n' "$out" | grep -Eq '^GATE_REJECTED	2$'  && ok "metrics: GATE_REJECTED を数える"  || ng "metrics: GATE_REJECTED" "$out"
 printf '%s\n' "$out" | grep -Eq '^elapsed_sec	[0-9]+$' && ok "metrics: 経過秒を出す(未 close は現在まで)" || ng "metrics: elapsed" "$out"
 printf '2026-09-08T00:00:00Z\tINTENT_CREATED\tscope=feature\n2026-09-08T01:30:00Z\tINTENT_CLOSED\tcompleted\n' > "$TMP/fixed.log"
 out="$("$I" metrics --file "$TMP/fixed.log")"
 printf '%s\n' "$out" | grep -Eq '^elapsed_sec	5400$' && ok "metrics: iso_to_epoch(00:00 → 01:30 = 5400 秒、GNU / BSD date 両対応)" || ng "metrics: elapsed 計算" "$out"
 grep -qx '.claude/metrics.log' "$ROOT/.gitignore" && ok ".gitignore に .claude/metrics.log がある" || ng ".gitignore に .claude/metrics.log が無い"
+
+# --- legacy(Receipt 無し、Phase 9 の記録)は従来の規則 --------------------------------------------------------
+expect_ok "check: 本物の docs/intents(旧形式 2 件 + 進行中)は通る" env INTENTS_DIR="$ROOT/docs/intents" "$I" check
 
 # --- close ----------------------------------------------------------------------------------------
 expect_fail "retro.md が無いと close できない" "retro.md" "$I" close
@@ -113,6 +128,16 @@ out="$("$I" metrics)"
 printf '%s\n' "$out" | grep -Eq '^HUMAN_TURN	2$' && ok "metrics: HUMAN_TURN を正確に数える(2 回 → 2)" || ng "metrics: HUMAN_TURN の件数" "$out"
 "$I" close --abandon >/dev/null
 
+# --- legacy(state.md に Receipt 無し)は UserPromptSubmit で承認できる ------------------------------------------
+"$I" new legacy --scope feature >/dev/null; L="$("$I" active)"
+grep -v '^- Receipt: ' "$L/state.md" > "$L/s.tmp" && mv "$L/s.tmp" "$L/state.md"
+"$I" gate present intent >/dev/null
+expect_fail "legacy: 在席(HUMAN_TURN)が無ければ承認できない(旧規則も人間ゼロは拒否)" "人間の応答" "$I" gate approve intent
+human
+expect_ok "legacy: Receipt 無しの intent は在席(UserPromptSubmit)だけで承認できる" "$I" gate approve intent
+expect_ok "check: legacy の承認は通る" "$I" check
+"$I" close --abandon >/dev/null
+
 # --- event / metrics: intent が無い時はローカルの metrics.log(Git 追跡外)に書く --------------------------
 expect_ok "event は intent が無ければ metrics.log に追記する" "$I" event HOOK_DENY "guard-bash: no intent"
 grep -q '	HOOK_DENY	guard-bash: no intent$' "$HARNESS_METRICS_LOG" && ok "metrics.log も同じ TSV 形式" || ng "metrics.log の形式" "$(cat "$HARNESS_METRICS_LOG" 2>&1)"
@@ -124,7 +149,11 @@ expect_ok "check: 正常な記録は通る" "$I" check
 cp -R "$D" "$TMP/backup"
 # 改竄 1: HUMAN_TURN を消す(Agent が自分で承認したことにする)
 grep -v '	HUMAN_TURN	' "$D/audit.log" > "$D/audit.log.tmp" && mv "$D/audit.log.tmp" "$D/audit.log"
-expect_fail "check: HUMAN_TURN 無しの承認を検出" "人間の応答" "$I" check
+expect_fail "check: HUMAN_TURN 無しの承認を検出" "Approve" "$I" check
+cp "$TMP/backup/audit.log" "$D/audit.log"
+# 改竄 1b: Approve を在席(UserPromptSubmit)に書き換える(consent では承認にならない)
+sed 's/	HUMAN_TURN	PostToolUse:AskUserQuestion answer=Approve gate=plan$/	HUMAN_TURN	UserPromptSubmit/' "$D/audit.log" > "$D/audit.log.tmp" && mv "$D/audit.log.tmp" "$D/audit.log"
+expect_fail "check: consent の承認が在席だけで行われた改竄を検出" "\[gate plan\] への Approve" "$I" check
 cp "$TMP/backup/audit.log" "$D/audit.log"
 # 改竄 2: state.md だけ approved にする(audit.log に GATE_APPROVED が無い)
 sed 's/^- Gate plan: .*/- Gate plan: approved 2026-01-01T00:00:00Z/' "$D/state.md" > "$D/s.tmp" && mv "$D/s.tmp" "$D/state.md"
