@@ -12,3 +12,4 @@ paths:
 - 曖昧な点は AskUserQuestion で聞く(最大 3 問)。答えは HUMAN_TURN になるが、それは承認ではない。
 - memory.md には `intent.sh note` で「解釈 / 逸脱 / トレードオフ / 未確認」を随時残す。/retro がそれを読む。
 - ADR は元に戻しにくい判断だけ(`/adr`)。ファイル命名 `docs/adr/NNNN-<slug>.md`、Status を持つ。
+- `audit.log` の未コミット差分(HUMAN_TURN / HOOK_*)は hook が書いたもの。branch を切り替える前に commit に含める(`git checkout` が差分で止まる)。消さない。

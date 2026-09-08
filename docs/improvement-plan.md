@@ -57,12 +57,13 @@ hook と CI の遅延はボトルネックではない。時間が消えてい�
 
 | # | 問題 | 改善 | 層 | 検証(DoD) |
 |---|---|---|---|---|
-| M1 | **テンプレート同期が二重編集を強制する。** 28 ファイルの byte 一致を CI が要求し、`/retro` で hook を直すたびに cp が要る | `scripts/sync-template.sh` を作り lefthook の pre-commit で自動実行(同一であるべき一覧は `harness-shape.test.sh` と共有)。テンプレート側は生成物として扱う | script + pre-commit | commit 後に `harness-shape.test.sh` の drift 検査が常に通る |
+| M1 | **テンプレート同期が二重編集を強制する。** 28 ファイルの byte 一致を CI が要求し、`/retro` で hook を直すたびに cp が要る(実測: 260908-harness-metrics で同期の `cp` が guard-bash §8 の ask を 3 回発生させた) | `scripts/sync-template.sh` を作り lefthook の pre-commit で自動実行(同一であるべき一覧は `harness-shape.test.sh` と共有)。テンプレート側は生成物として扱う | script + pre-commit | commit 後に `harness-shape.test.sh` の drift 検査が常に通る |
 | M2 | **誤検知の逃げ道が無い。** guard-bash は文字列リテラル内の回避フラグにも反応し(既知 3 件)、回避には hook 編集(HITL-4 + CODEOWNERS + 同期)しかない | 理由付き override: `HARNESS_OVERRIDE="<reason>"` を環境変数で与えた Bash は deny が ask に格下げされ、理由が audit(`HOOK_OVERRIDE`)に残る。黙って hook を緩める経路を塞ぐ | hook | `hooks.test.sh`: override なしは deny / ありは ask + audit 行 |
 | M3 | **active intent が branch と結びついていない。** intent が残っていると無関係な小修正まで deny される(plan §10) | `state.md` に `Branch:` を記録し、guard-plan-approval と guard-bash §7 は現在の branch が一致する時だけ効かせる | script + hook | `hooks.test.sh`: 別 branch では deny されない |
 | M4 | **post-edit-check の `--fix` が Agent の背後でファイルを書き換える。** 整形後の内容を Agent は知らず、次の Edit が old_string 不一致で失敗し得る。頻度は未計測 | H1 の計測に「Edit 失敗回数」を含め、実害があれば `--fix` を止めて指摘のみにする | hook | 計測結果を次の retro に載せる。判断はそこで |
 | M5 | **Dependabot の PR が 5 件溜まっている。** CODEOWNERS 承認が要る設計は意図どおりだが、更新が止まっており品質の劣化 | cooldown 7 日を通過し CI が緑の actions / patch 更新は auto-merge を許可する(`.github/workflows/auto-merge.yml` + Rego で対象を限定) | CI + policy | 対象外(major / 新規依存)は auto-merge されないことを Rego のテストで確認 |
-| M6 | **HUMAN_TURN が毎プロンプトで audit.log に積まれ、PR の diff にノイズが出る** | 連続する HUMAN_TURN は直近 1 件だけ残す(gate の判定に必要なのは「提示より後に 1 件あるか」だけ) | script | `intent.test.sh`: 連続 3 回の human-turn で audit 行が 1 行 |
+| M6 | **HUMAN_TURN が毎プロンプトで audit.log に積まれ、PR の diff にノイズが出る**(実害: merge 後の `git checkout main` が audit.log の未コミット差分で止まった。260908-harness-metrics の retro) | 連続する HUMAN_TURN は直近 1 件だけ残す(gate の判定に必要なのは「提示より後に 1 件あるか」だけ) | script | `intent.test.sh`: 連続 3 回の human-turn で audit 行が 1 行 |
+| M7 | **記録が「誰の・どこでの判定か」を区別しない。** subagent(test-reviewer)が `/tmp` のコピーで行った mutation テストの Bash が本体の guard-bash を通り、intent の audit.log に HOOK_ASK 22 件 / HOOK_DENY 2 件として混ざった(260908-harness-metrics: 29 件中 25 件が subagent 由来)。metrics の分母が汚れる | hook 入力の `cwd`(と、あれば agent 識別子)を `event` の detail に含め、`metrics` が `cwd ≠ repo` を別集計する。guard-bash 自体の判定は変えない | hook + script | `hooks.test.sh`: cwd が repo 外の deny が `[external]` 付きで記録され、metrics が別行で数える |
 
 ### 手を付けない(理由付き)
 
@@ -92,6 +93,6 @@ retro の申し送り「通常の feature で /intent を一周する」を、�
 3. Exercise 13(条件 A)を実施し、H1 のデータを 1 セット取る
 4. H3(軽量経路)。閾値は 3 のデータで決める
 5. Exercise 13(条件 B)を実施し、比較を書く
-6. M1〜M6 は 1〜5 の合間に、1 項目 1 intent で
+6. M1〜M7 は 1〜5 の合間に、1 項目 1 intent で。M7 は計測の分母を汚すので H3 の閾値を決める(4)より前に入れる
 
 各項目の変更は `.claude/**` `scripts/**` `policies/**` `.github/**` に及ぶため PR に理由を書く(AGENTS.md)。テンプレート同期は M1 が入るまで手動。
