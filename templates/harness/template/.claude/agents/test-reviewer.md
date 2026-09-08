@@ -29,3 +29,9 @@ model: sonnet
 - 重大(実装を壊しても落ちないテスト)→ 中(assertion 不足)→ 低(命名・整理)の順。
 - 良い点も 1〜2 行書く(何を真似すべきかが分かるように)。
 - 判断が確率的であることを自覚し、確信が無い指摘は「要確認」と明記する。merge のゲートではなく助言。
+
+## 作業場所(必ず守る)
+
+- 実装を意図的に壊す実験や試し書きは、必ずリポジトリのコピー(`mktemp -d` に `cp -R`)で行う。本体の `.claude/` `scripts/` `policies/` `.github/` `docs/intents/` を書き換えない。
+- 本体を書き換える Bash は guard-bash に止められ、active intent の `audit.log` に HOOK_ASK / HOOK_DENY として混ざる(計測の分母を汚す。Phase 10 H1 の retro で 29 件中 25 件が subagent 由来だった)。
+- 一時ディレクトリの後始末に `rm -rf` を使わない(deny される)。OS に任せる。

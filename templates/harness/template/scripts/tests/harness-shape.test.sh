@@ -35,6 +35,9 @@ for pair in intent:intent plan-units:plan; do
 done
 grep -q '\[gate' .claude/rules/intents.md && ok "rules/intents.md がゲートの印([gate)を説明する" || ng "rules/intents.md に [gate の説明が無い"
 grep -q 'answer=Approve' docs/lifecycle.md && ok "lifecycle.md が同意の受領証(answer=Approve)を説明する" || ng "lifecycle.md に answer=Approve の説明が無い"
+# 3d. bash 3.2 の罠: 変数名の直後に非 ASCII(`$a、` は変数 `a、` になり unbound variable)。rules に書いても 2 度踏んだので検査にする(Phase 10 H2 の retro)
+bad="$(grep -nE '\$[A-Za-z_][A-Za-z0-9_]*[^[:print:][:space:]]' .claude/hooks/*.sh scripts/*.sh scripts/verify/*.sh scripts/tests/*.sh 2>/dev/null | grep -vE '\$\{' | head -n5 || true)"
+[ -z "$bad" ] && ok "変数の直後に非 ASCII が無い(\${a} と書く)" || ng "変数の直後に非 ASCII(bash 3.2 で変数名に含まれる): $bad"
 # 4. テンプレートとのドリフト。固有値を持つもの(targets.sh、sec.sh、security.yml、biome 等)は対象外(Exercise 11)。
 if [ -d "$T" ]; then
   same=(.claude/hooks/*.sh .claude/skills/*/SKILL.md .claude/agents/*.md .claude/rules/harness.md .claude/rules/intents.md .claude/settings.json
