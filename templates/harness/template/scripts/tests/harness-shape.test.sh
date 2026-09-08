@@ -28,6 +28,13 @@ done
 # 3b. /retro の計測欄はハーネスの判定回数を読む(Phase 10、improvement-plan H1。retro で摩擦を数えない経路を塞ぐ)
 r=.claude/skills/retro/SKILL.md
 grep -q 'intent.sh metrics' "$r" && grep -q 'deny' "$r" && grep -q 'Stop block' "$r" && ok "retro skill が intent.sh metrics(deny / Stop block)を読む" || ng "retro skill の計測欄に metrics / deny / Stop block が無い: $r"
+# 3c. ゲートは [gate <g>] 付きの AskUserQuestion で出す(Phase 10 H2。テキスト提示は承認にならないので、手順がそう書いていることを検査する)
+for pair in intent:intent plan-units:plan; do
+  sk="${pair%%:*}"; g="${pair##*:}"; f=".claude/skills/$sk/SKILL.md"
+  if grep -q 'AskUserQuestion' "$f" && grep -q "\[gate $g\]" "$f"; then ok "skill $sk のゲート手順に AskUserQuestion と [gate $g] がある"; else ng "skill $sk のゲート手順に AskUserQuestion / [gate $g] が無い: $f"; fi
+done
+grep -q '\[gate' .claude/rules/intents.md && ok "rules/intents.md がゲートの印([gate)を説明する" || ng "rules/intents.md に [gate の説明が無い"
+grep -q 'answer=Approve' docs/lifecycle.md && ok "lifecycle.md が同意の受領証(answer=Approve)を説明する" || ng "lifecycle.md に answer=Approve の説明が無い"
 # 4. テンプレートとのドリフト。固有値を持つもの(targets.sh、sec.sh、security.yml、biome 等)は対象外(Exercise 11)。
 if [ -d "$T" ]; then
   same=(.claude/hooks/*.sh .claude/skills/*/SKILL.md .claude/agents/*.md .claude/rules/harness.md .claude/rules/intents.md .claude/settings.json

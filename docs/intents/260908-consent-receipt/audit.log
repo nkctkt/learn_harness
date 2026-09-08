@@ -24,3 +24,6 @@
 2026-09-08T03:02:10Z	NOTE	Interpretations
 2026-09-08T03:02:10Z	UNIT_DONE	u1-answer-receipt
 2026-09-08T03:02:10Z	UNIT_STARTED	u2-consent-gate
+2026-09-08T03:04:16Z	UNIT_DONE	u2-consent-gate
+2026-09-08T03:04:16Z	UNIT_STARTED	u3-skills-rules-docs
+2026-09-08T03:04:54Z	HOOK_ASK	guard-bash: ハーネス自体(hooks / CI / policies / lefthook)を Bash で書き換えようとしています。意図した変更か確認してください。

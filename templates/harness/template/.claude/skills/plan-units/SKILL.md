@@ -59,8 +59,9 @@ argument-hint: ""
    scripts/intent.sh unit add u1-skeleton "縦串: POST /links → DB → short"
    ```
 5. **plan-reviewer に読ませる**(Agent tool で `plan-reviewer` subagent)。NOT-READY の指摘は直す。直さない判断は `scripts/intent.sh note Deviations "..."` に理由を残す。reviewer は助言でありゲートではない。
-6. **ゲートに出す**: `scripts/intent.sh gate present plan`。見せるのは plan.md のパス、unit 表と DoD、承認後に `/build-unit u1-...` から始めること。**Approve / Request Changes の 2 択でターンを終える。**
-7. **人間の応答後**: Approve → `gate approve plan` → `stage construction` → `/build-unit <u1>`。Request Changes → `gate reject plan "<理由>"` → 直して 6 へ。
+6. **ゲートに出す**: `scripts/intent.sh gate present plan`。見せるのは plan.md のパス、unit 表と DoD、承認後に `/build-unit u1-...` から始めること。
+   **AskUserQuestion** で聞く。質問文の先頭に `[gate plan]`、選択肢は **Approve / Request Changes の 2 つだけ**。ここで人間の回答を待つ。テキストの返答は承認にならない。
+7. **回答が返った同じターンで**: Approve → `gate approve plan` → `stage construction` → `/build-unit <u1>`。Request Changes → `gate reject plan "<理由>"` → 直して 6 へ(再提示)。
 
 ## 承認後に計画を変えたくなったら(halt-and-ask)
 
