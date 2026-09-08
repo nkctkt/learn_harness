@@ -25,7 +25,9 @@ if [ $# -eq 0 ]; then
 fi
 
 # 差分モード: Biome は対象ファイルだけ、tsc は対象ファイルが属するパッケージだけ
-files=(); while IFS= read -r _l; do files+=("$_l"); done < <(filter_files '\.(ts|tsx|js|jsx|mjs|cjs|json|jsonc|css)$' "$@")
+# templates/ は biome.json / eslint / knip の全てで除外している(生成物扱い、Exercise 11)。差分モードで渡すと
+# Biome が「No files were processed」で失敗するので、ここでも落とす(Phase 9 で template 同期の commit が止まった)。
+files=(); while IFS= read -r _l; do files+=("$_l"); done < <(filter_files '\.(ts|tsx|js|jsx|mjs|cjs|json|jsonc|css)$' "$@" | grep -v '^templates/')
 [ ${#files[@]} -eq 0 ] && { echo "  - no ts files"; exit 0; }
 if [ "$VERIFY_FIX" = 1 ]; then step "biome check --write (${#files[@]} files)" pnpm exec biome check --write "${files[@]}"
 else step "biome check (${#files[@]} files)" pnpm exec biome check "${files[@]}"; fi

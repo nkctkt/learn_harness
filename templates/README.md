@@ -23,15 +23,18 @@ uv tool run copier update --trust
 |---|---|---|
 | `AGENTS.md`(TODO 付き)、`CLAUDE.md` | 指示。200 行以内に保つ | L1 |
 | `.claude/skills/{add-dependency,new-service,fix-ci}` | 手順 | L2 |
-| `.claude/agents/test-reviewer.md` | テストの弱さを読む subagent | 助言 |
-| `.claude/settings.json`、`.claude/hooks/*.sh` | deny、guard-bash / guard-edit / guard-secrets(PreToolUse)、post-edit-check(PostToolUse)、stop-verify(Stop) | L3 |
+| `.claude/skills/{intent,plan-units,adr,build-unit,create-pr,release,incident,retro}` | ライフサイクルの各タスクの手順(`docs/lifecycle.md`) | L2 |
+| `.claude/rules/{harness,intents}.md` | 領域別ルール(`paths:`)。api / web 等は自分のサービス向けに書く | L1 |
+| `.claude/agents/{test-reviewer,plan-reviewer}.md` | テストの弱さ / 計画の穴を読む subagent | 助言 |
+| `.claude/settings.json`、`.claude/hooks/*.sh` | deny、guard-bash / guard-edit / guard-secrets / guard-plan-approval(PreToolUse)、post-edit-check(PostToolUse)、stop-verify(Stop)、record-human-turn(UserPromptSubmit / AskUserQuestion)、session-start | L3 |
+| `scripts/intent.sh`、`scripts/tests/*.test.sh`、`docs/intents/README.md` | 変更ごとの記録と承認ゲート(受領証は hook が書く)、hook / intent.sh の振る舞いテスト | L2 / L3 / L7 |
 | `.claude/sandbox.disabled.json` | sandbox の設計例(有効化は宛先を洗い出してから) | L4 |
 | `lefthook.yml`、`.gitleaks.toml` | pre-commit(staged verify、gitleaks、shell 構文、Conventional Commits) | L5 |
 | `.github/rulesets/main-protection.json`、`scripts/github/apply-rulesets.sh` | Rulesets as code(PR 必須、`ci-ok` + `security-ok`、Code Owner レビュー、会話解決) | L6 |
 | `.github/workflows/{ci,security,nightly,release}.yml`、`.github/actions/setup-infra-tools` | CI(全 action SHA 固定、harden-runner、gate / report 分離) | L7 |
 | `policies/rego/*`、`policies/semgrep/*` | 組織ルール(SHA 固定、完全固定、公開 SG 禁止 …)と自作 SAST ルール(unit test 付き) | L9 |
 | `.github/CODEOWNERS`、`.github/dependabot.yml` | 人間承認の対象、cooldown 7 日 | L10 |
-| `scripts/verify.sh`、`scripts/verify/*.sh` | 全層が呼ぶ 1 本の検証(`--files` / `--changed` / 全体、`--only`) | 共通 |
+| `scripts/verify.sh`、`scripts/verify/*.sh` | 全層が呼ぶ 1 本の検証(`--files` / `--changed` / 全体、`--only ts,py,go,sec,infra,docs`) | 共通 |
 | `biome.json`、`eslint.config.mjs`、`knip.json`、`.dependency-cruiser.cjs`、`.trivyignore` | ツール設定 | - |
 
 ## 適用後に人間がやること(順番どおり)

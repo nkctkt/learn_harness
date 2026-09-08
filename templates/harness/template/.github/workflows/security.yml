@@ -120,7 +120,7 @@ jobs:
 
   # Dockerfile / Terraform / workflows / Rego ポリシー。ローカルと同じ scripts/verify.sh --only infra を実行する。
   infra:
-    name: infra / hadolint, actionlint, zizmor, terraform, trivy config, conftest
+    name: infra / hadolint, actionlint, zizmor, terraform, trivy config, conftest, intent check
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -139,7 +139,7 @@ jobs:
         with:
           version: v0.74.0
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
-      - run: scripts/verify.sh --only infra
+      - run: scripts/verify.sh --only infra,docs
 
   security-ok:
     name: security-ok

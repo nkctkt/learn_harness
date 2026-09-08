@@ -1,7 +1,7 @@
 # AGENTS.md — Reading Shelf
 
 全てのコーディングエージェント向けの共通指示。200 行以内に保つ。
-手順は `.claude/skills/`、領域別ルールは `.claude/rules/` に置く(Phase 1 以降)。
+手順は `.claude/skills/`、領域別ルールは `.claude/rules/`(`paths:` で自動読込)に置く。
 設計判断と計画は `docs/plan.md` を参照。
 
 ## プロジェクト概要
@@ -21,7 +21,8 @@
 - DB: `docker compose -f infra/docker/compose.yaml up -d`
 - 型検査: `pnpm -r typecheck`
 - UI smoke(Playwright、API はモック): `pnpm --filter @shelf/web test:e2e`。全サービス結合は `docker compose -f infra/docker/compose.yaml up --build`
-- 全検証(CI と同一): `scripts/verify.sh`。段を限定するなら `--only ts,py,go,sec,infra`。変更分だけなら `--changed`
+- 全検証(CI と同一): `scripts/verify.sh`。段を限定するなら `--only ts,py,go,sec,infra,docs`。変更分だけなら `--changed`
+- intent の状態: `scripts/intent.sh status`(SessionStart でも注入される)
 - セキュリティ段のみ: `scripts/verify.sh --only sec`(Semgrep 自作ルール + Trivy)
 
 ## 規約
@@ -35,6 +36,14 @@
 - SQL は Drizzle のクエリビルダか `sql\`...${x}\``。`sql.raw` に補間・連結を渡さない(Semgrep が拒否する)。
 - 意図的な欠陥を作る演習では、ファイル先頭に `// EXERCISE:` / `# EXERCISE:` コメントを付け、
   `docs/exercises/` に記録してから修正する。
+
+## 開発ライフサイクル(Phase 9、`docs/lifecycle.md`)
+
+- `apps/ services/ infra/` の振る舞いを変える作業は `/intent` から始める(記録は `docs/intents/<id>/`)。小さな修正は不要。
+- 順序: `/intent` → 承認 → `/plan-units`(+ `/adr`、plan-reviewer)→ 承認 → `/build-unit` ×N → `/create-pr` → merge → `/release` / `/incident` → `/retro` → close。
+- ゲートは Approve / Request Changes の 2 択で提示し、**提示したらターンを終える**。承認は人間の応答後に `scripts/intent.sh gate approve` で記録する(hook が書く HUMAN_TURN が無いと拒否される)。
+- 計画(gate plan)承認前はアプリを書けない(hook が deny)。`state.md` / `audit.log` は `scripts/intent.sh` 経由でのみ更新する。
+- 計画から外れたら勝手に直さず、`scripts/intent.sh note "Open questions" "..."` を残してターンを終える。
 
 ## テスト方針
 

@@ -44,7 +44,18 @@ fi
 if printf '%s' "$cmd" | grep -Eq '(curl|wget)[^|]*\|[[:space:]]*(sudo[[:space:]]+)?(ba|z)?sh'; then
   deny "リモートスクリプトのパイプ実行は禁止です。パッケージマネージャ経由で導入してください。"
 fi
-# 6) ハーネス自体の改変は人間の確認を挟む(HITL-4)。Edit/Write 経由は guard-edit.sh が見る。
+# 6) intent の状態・監査ログ・受領証の直接操作(Phase 9)。scripts/intent.sh の正規の入口以外は ask。
+#    human-turn は hook 専用(Agent が呼べば承認の捏造)。state.md / audit.log への書込も同様。
+if printf '%s' "$cmd" | grep -Eq 'intent\.sh[[:space:]]+human-turn|docs/intents/[^[:space:]]*/(state\.md|audit\.log)' && printf '%s' "$cmd" | grep -Eq '(human-turn|>|>>|sed[[:space:]]+-i|tee[[:space:]]|mv[[:space:]]|rm[[:space:]]|cp[[:space:]])'; then
+  ask "intent の受領証・状態・監査ログを直接操作しようとしています。承認は人間の応答(hook が記録)でのみ成立します。意図した操作か確認してください。"
+fi
+# 7) 計画未承認のあいだの保護領域への Bash 書込(guard-plan-approval.sh の Bash 版)。
+if printf '%s' "$cmd" | grep -Eq '(>|>>|tee[[:space:]]|sed[[:space:]]+-i|cp[[:space:]]|mv[[:space:]])[^;&|]*(apps|services|packages|infra|contracts)/' \
+   && [ -x "${CLAUDE_PROJECT_DIR:-.}/scripts/intent.sh" ] && d="$("${CLAUDE_PROJECT_DIR:-.}/scripts/intent.sh" active 2>/dev/null)" \
+   && ! sed -n 's/^- Gate plan: //p' "$d/state.md" | grep -q '^approved'; then
+  deny "計画が未承認です(intent $(basename "$d"))。apps/ services/ infra/ 等への書込は gate plan の承認後に行ってください。"
+fi
+# 8) ハーネス自体の改変は人間の確認を挟む(HITL-4)。Edit/Write 経由は guard-edit.sh が見る。
 if printf '%s' "$cmd" | grep -Eq '(\.claude/(settings\.json|hooks/)|\.github/workflows/|policies/|lefthook\.yml|\.gitleaks\.toml)' && printf '%s' "$cmd" | grep -Eq '(>|>>|sed[[:space:]]+-i|tee[[:space:]]|mv[[:space:]]|rm[[:space:]]|cp[[:space:]]|python3?[[:space:]]+-|node[[:space:]]+-e)'; then
   ask "ハーネス自体(hooks / CI / policies / lefthook)を Bash で書き換えようとしています。意図した変更か確認してください。"
 fi

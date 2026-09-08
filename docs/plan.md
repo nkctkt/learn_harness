@@ -128,22 +128,25 @@ learn_harness/
 ├── .claude/
 │   ├── settings.json                        # permissions.deny / sandbox / hooks
 │   ├── rules/{api,web,enricher,infra,db}.md # paths 付き領域別ルール
-│   ├── skills/                              # new-api / add-dependency / security-review / create-pr / new-service / fix-ci
-│   ├── agents/                              # test-reviewer / security-reviewer
-│   └── hooks/                               # session-start / guard-bash / guard-edit / post-edit-check / stop-verify
+│   ├── skills/                              # add-dependency / new-service / fix-ci + ライフサイクル 8 本(Phase 9)
+│   ├── agents/                              # test-reviewer / plan-reviewer
+│   └── hooks/                               # session-start / record-human-turn / guard-* / post-edit-check / stop-verify
 ├── .github/
 │   ├── workflows/                           # ci.yml / security.yml / iac-policy.yml / nightly.yml / release.yml
 │   ├── CODEOWNERS / dependabot.yml / pull_request_template.md
 │   └── rulesets/*.json                      # Rulesets as code
 ├── scripts/
+│   ├── intent.sh                            # intent の状態・監査ログ・承認ゲート(Phase 9)
 │   ├── verify.sh                            # --changed で差分限定(hook)、既定で全体(CI)
-│   └── verify/{ts,py,go,infra}.sh
+│   └── verify/{ts,py,go,sec,infra,docs}.sh
 ├── policies/{rego,tests}/
 ├── apps/{web,api}  services/{enricher,shortener}  packages/shared-types
 ├── infra/{docker,terraform}
 ├── docs/
 │   ├── plan.md(本書)
-│   ├── quality-engineering.md / harness-architecture.md / ci-design.md / security.md
+│   ├── quality-engineering.md / harness-architecture.md / ci-design.md / security.md / lifecycle.md
+│   ├── intents/<YYMMDD>-<slug>/             # intent.md / plan.md / state.md / audit.log / memory.md(Phase 9)
+│   ├── adr/NNNN-*.md                        # 設計判断の記録(Phase 9)
 │   └── exercises/NN-*.md                    # 意図的欠陥ごとの「作る → 検出 → 原因 → 修正」記録
 └── templates/                               # 最終成果物。poc/company-ai-template の v2
 ```
@@ -206,6 +209,8 @@ Nightly         時間      高       不可      重いスキャン、ドリフ
 | 8a | 契約 + 出荷物の証明 | L5 | zod → JSON Schema の契約(`contracts/`)+ producer 側契約テスト(Go / Py)、test-reviewer subagent の実行と対応(バグ 1 件発見)、`release.yml`(GHCR、provenance / SBOM attestation、image gate。タグ未実行) | 応答フィールド名の変更 | サービス間契約の破壊、出荷物の出所不明 |
 | 8b | 一般化 + 運用 | L4 | `templates/harness`(copier、49 ファイル、生成検証済み)、docs 4 本、`scripts/verify/targets.sh` への固有値の集約、README の復旧手順、`v0.1.0` release(SLSA provenance + CycloneDX SBOM を `gh attestation verify` で確認)、Dependabot BLOCKED の原因特定(Code Owner レビュー = 意図どおり)、sandbox は設計例のみ、harden-runner は audit のまま | copier.yml の YAML、nested Biome config | テンプレートのドリフト |
 
+| 9 | ライフサイクル型ハーネス(AI-DLC 参照) | L2〜L3 拡張 | intent 記録(`docs/intents/<id>/`)、`scripts/intent.sh`(状態・監査ログ・承認ゲート)、人間の在席を記録する hook(UserPromptSubmit / AskUserQuestion)、計画承認前のアプリ変更を拒否する hook、SessionStart で状態を再注入、`.claude/rules/`(領域別ルール)、ライフサイクル skill 8 本(`/intent` `/plan-units` `/adr` `/build-unit` `/create-pr` `/release` `/incident` `/retro`)、`plan-reviewer` subagent、CI での監査ログ整合性検査 | 計画未承認でのアプリ編集、人間不在での自己承認、監査ログの改竄 | 「Agent が勝手に決めて勝手に作る」、承認の捏造、セッションを跨いだ文脈の消失 |
+
 Phase 1〜4 が本質。ここまでで 7 割の価値が出る。
 
 ## 8. 調査レポートとの差分(このプロジェクトで検証すること)
@@ -232,8 +237,47 @@ Phase 1〜4 が本質。ここまでで 7 割の価値が出る。
 - Hook は `.claude/settings.json` を編集すれば無効化できる。guard-edit が `.claude/**` への書込を ask にし、CODEOWNERS で承認を必須にしている(Phase 3)。それでも hooks 配列ごと消されれば両方消えるので、最終防衛線は CI と Rulesets。
 - **hook の構文エラーは Agent を完全停止させる**(Exercise 04)。bash の構文エラーは exit 2 = block で、guard-bash と guard-edit が同時に壊れると Bash も Edit/Write も使えず、Agent 自身では修復できない。対策: pre-commit の `bash -n`、hook 変更は CODEOWNERS 承認、README に人間向けの復旧手順。
 - guard-bash は文字列リテラル内の hook 回避フラグにも反応する(既知の誤検知)。hook のテストケースはファイルに置く。
+- **承認の受領証(HUMAN_TURN)はローカル層**(Phase 9)。Agent が `intent.sh human-turn` を呼べば捏造できる(guard-bash は ask にするが deny ではない)。`audit.log` を Bash 以外(他ツール、人間)で書けば検出できない。CI の `intent.sh check` は順序の整合しか見ない。最後の防衛線は PR レビューで `docs/intents/` の diff を読むこと。
+- **guard-plan-approval は Edit/Write のパスしか見ない**。Bash の heredoc / `sed -i` は guard-bash §7 が同じ条件で deny するが、`python3 -c` や `tee` 以外のコマンドで書く経路は素通りする。Stop hook の verify は通るので、検出は PR の diff と `docs/intents/` の対応で行う。
+- **新しい subagent は作成直後には Agent tool で呼べない**(Phase 9 で plan-reviewer を作った直後は "not found"。数十分後に認識された)。skill は即時。待てない時は general-purpose agent に定義ファイルを読ませて代用する。
+- **active な intent が残っていると、無関係な小修正でも apps/ への書込が deny される**。intent は close するか、`--abandon` で放棄する。SessionStart が状態を出すので気づける。
 
 ## 11. 環境メモ(2026-09-05 時点)
 
 - あり: node 24, pnpm 11, uv 0.6, python 3.13, docker 27, terraform 1.14
 - なし(Phase 到達時に導入): go, gh, gitleaks, trivy, biome(pnpm 経由)
+
+## 12. AI-DLC との対応(Phase 9 の設計根拠)
+
+AWS の AI-DLC(`../aidlc-workflows`、v2.7)は 5 フェーズ 33 ステージの開発ライフサイクルを、
+状態機械(`aidlc-state.md` + 追記専用の監査ログ)と 17 本の hook で駆動する。本リポジトリのハーネスは
+Construction → CI の区間しか覆っていなかった。上流(意図・要件・設計判断・分解と計画)と下流
+(リリース・障害・振り返り)には手順も記録も無く、「Agent が勝手に決めて勝手に作る」を止める層が無い。
+
+AI-DLC から**仕組みとして**借りるもの(エンジンは借りない。bash + markdown で最小に再実装する):
+
+| AI-DLC | 本リポジトリでの対応 | 層 | 無いと何が起きるか |
+|---|---|---|---|
+| intent ごとの record dir(`aidlc/spaces/<space>/intents/<id>/`) | `docs/intents/<YYMMDD>-<slug>/`(intent / plan / state / audit / memory) | 記録 | 「なぜこの変更をしたか」がチャットログにしか残らない。セッションを跨ぐと消える |
+| 承認ゲート + HARD STOP(ゲートを出したらターンを終える) | `intent.sh gate present` → ターン終了 → 人間の応答 → `gate approve` | L2 + L3 | Agent が「承認されたものとして」進む |
+| `HUMAN_TURN` 受領証(UserPromptSubmit / AskUserQuestion の hook が記録し、gate はそれが無いと承認を拒否) | `record-human-turn.sh` + `intent.sh gate approve` の検査 | L3 | Agent が自分で承認を書ける(承認の捏造) |
+| plan-approval guard(計画承認前は code-generation を拒否) | `guard-plan-approval.sh`(計画未承認で `apps/ services/ infra/ …` への書込を deny) | L3 | 計画が「出力」になる(先に作って後から計画を書く) |
+| SessionStart / PreCompact で状態を再注入 | `session-start.sh`(active intent の状態を additionalContext で渡す) | L3 | 再開時に何をしていたか分からない |
+| memory の 5 層(org → team → project → phase → stage、加算のみ) | AGENTS.md(org/project)→ `.claude/rules/*.md`(領域、`paths:`)→ skill(stage) | L1 / L2 | 全部を AGENTS.md に書いて 200 行を超える |
+| reviewer agent(READY / NOT-READY、決して block しない) | `plan-reviewer` subagent(test-reviewer と同じ位置づけ) | 助言 | 計画の穴を人間だけが探す |
+| Learnings Ritual(ゲート前に memory.md から学びを収集し harness に書き戻す) | `/retro` skill(memory.md → AGENTS.md / rules / hook / verify / exercise に振り分け) | L2 | 同じ失敗を次の intent で繰り返す。`docs/exercises` が手作業のままになる |
+| required-sections sensor / 監査ログの整合性 | `intent.sh check`(CI の `docs` 段) | L7 | ローカルの記録が改竄されても気づかない |
+| Walking skeleton を最初の Bolt に、Bolt ごとの Definition of Done | `/plan-units` のテンプレート(unit 1 = 薄い縦串、各 unit に検証可能な DoD) | L2 | 結合が最後に露見する |
+
+借りないもの(理由):
+
+- オーケストレーションエンジン(`aidlc-orchestrate.ts`、~50 tools、runtime-graph)。33 ステージを 1 人の学習環境で回すのは過剰で、学ぶべきは「ゲートと受領証を誰が発行するか」であってエンジンではない。
+- 11 種の scope。本リポジトリは `feature` / `bugfix` / `refactor` / `harness` の 4 つに絞る(`intent.sh new --scope`)。
+- swarm / worktree / 自律モード。単独メンテナでは HITL レベルを下げる動機が無い。
+- sensor の汎用機構。既存の `verify.sh` がその役割を持つ。
+
+設計原則(既存 §6 に追加):
+
+- **受領証は Agent が発行できないものにする。** 人間の在席は hook(UserPromptSubmit)が書き、Agent はそれを読むだけ。`state.md` / `audit.log` への直接書込は guard-edit が deny する。
+- **ゲートは 2 択で出す**(Approve / Request Changes)。AI-DLC の NO EMERGENT BEHAVIOR RULE。3 択目を Agent が発明しない。
+- **記録は Git に入れる。** `docs/intents/` は PR の一部としてレビューされ、CI が整合性を検査する。ローカル限定の状態は持たない。

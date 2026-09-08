@@ -118,9 +118,9 @@ jobs:
           allow-licenses: MIT, ISC, Apache-2.0, BSD-2-Clause, BSD-2-Clause-Views, BSD-3-Clause, 0BSD, CC0-1.0, CC-BY-4.0, MPL-2.0, Unlicense, Python-2.0, BlueOak-1.0.0
           comment-summary-in-pr: on-failure
 
-  # Dockerfile / Terraform / workflows / Rego ポリシー。ローカルと同じ scripts/verify.sh --only infra を実行する。
+  # Dockerfile / Terraform / workflows / Rego ポリシー + ライフサイクル記録(docs/intents)の整合性。ローカルと同じ scripts/verify.sh --only infra,docs を実行する。
   infra:
-    name: infra / hadolint, actionlint, zizmor, terraform, trivy config, conftest
+    name: infra / hadolint, actionlint, zizmor, terraform, trivy config, conftest, intent check
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -139,7 +139,7 @@ jobs:
         with:
           version: v0.74.0
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
-      - run: scripts/verify.sh --only infra
+      - run: scripts/verify.sh --only infra,docs
 
   security-ok:
     name: security-ok
