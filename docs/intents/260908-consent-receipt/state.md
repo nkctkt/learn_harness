@@ -1,6 +1,6 @@
 # Intent: 260908-consent-receipt
 
-- Status: active
+- Status: done
 - Scope: harness
 - Stage: handoff
 - Gate intent: approved 2026-09-08T02:42:49Z

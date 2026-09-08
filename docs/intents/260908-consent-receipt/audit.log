@@ -35,3 +35,5 @@
 2026-09-08T04:11:30Z	HUMAN_TURN	UserPromptSubmit
 2026-09-08T04:16:08Z	HUMAN_TURN	PostToolUse:AskUserQuestion
 2026-09-08T04:16:15Z	HOOK_ASK	guard-bash: intent の受領証・状態・監査ログを直接操作しようとしています。承認は人間の応答(hook が記録)でのみ成立します。意図した操作か確認してください。
+2026-09-08T04:18:28Z	HOOK_ASK	guard-bash: ハーネス自体(hooks / CI / policies / lefthook)を Bash で書き換えようとしています。意図した変更か確認してください。
+2026-09-08T04:19:38Z	INTENT_CLOSED	completed

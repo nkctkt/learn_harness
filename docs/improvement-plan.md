@@ -64,6 +64,7 @@ hook と CI の遅延はボトルネックではない。時間が消えてい�
 | M5 | **Dependabot の PR が 5 件溜まっている。** CODEOWNERS 承認が要る設計は意図どおりだが、更新が止まっており品質の劣化 | cooldown 7 日を通過し CI が緑の actions / patch 更新は auto-merge を許可する(`.github/workflows/auto-merge.yml` + Rego で対象を限定) | CI + policy | 対象外(major / 新規依存)は auto-merge されないことを Rego のテストで確認 |
 | M6 | **HUMAN_TURN が毎プロンプトで audit.log に積まれ、PR の diff にノイズが出る**(実害: merge 後の `git checkout main` が audit.log の未コミット差分で止まった。260908-harness-metrics の retro) | 連続する HUMAN_TURN は直近 1 件だけ残す(gate の判定に必要なのは「提示より後に 1 件あるか」だけ) | script | `intent.test.sh`: 連続 3 回の human-turn で audit 行が 1 行 |
 | M7 | **記録が「誰の・どこでの判定か」を区別しない。** subagent(test-reviewer)が `/tmp` のコピーで行った mutation テストの Bash が本体の guard-bash を通り、intent の audit.log に HOOK_ASK 22 件 / HOOK_DENY 2 件として混ざった(260908-harness-metrics: 29 件中 25 件が subagent 由来)。metrics の分母が汚れる | hook 入力の `cwd`(と、あれば agent 識別子)を `event` の detail に含め、`metrics` が `cwd ≠ repo` を別集計する。guard-bash 自体の判定は変えない | hook + script | `hooks.test.sh`: cwd が repo 外の deny が `[external]` 付きで記録され、metrics が別行で数える |
+| M8 | **reviewer subagent の壁時計が intent の大半を占める。** H2 で test-reviewer 56 分 / plan-reviewer 10 分(intent 全体 82 分)。mutation を 1 件ずつ手で回すため | reviewer の prompt に時間予算(例 15 分)と「mutation は最大 N 件、対象は差分のテストだけ」を書く。`/create-pr` は reviewer の所要時間を memory に note する(計測) | agent + skill | 次の intent の retro で test-reviewer の所要時間が 20 分以内 |
 
 ### 手を付けない(理由付き)
 
@@ -71,7 +72,7 @@ hook と CI の遅延はボトルネックではない。時間が消えてい�
 |---|---|
 | hook / Stop hook / CI の高速化 | 実測でボトルネックではない(§1.2)。規模が 10 倍になった時に再測 |
 | Claude sandbox の導入 | `docs/harness-architecture.md` §6 の設計のまま。宛先の洗い出しが先 |
-| reviewer subagent の廃止 | test-reviewer は 13 分で 1 件のバグを見つけた。費用対効果は H1 の計測が揃ってから判断 |
+| reviewer subagent の廃止 | test-reviewer は 13 分で 1 件のバグを見つけた。費用対効果は H1 の計測が揃ってから判断。実測(H2): plan-reviewer 10 分、test-reviewer **56 分**で、intent の壁時計 82 分の大半が reviewer 待ち。見つけた欠陥は重大 1 + 中 2(全て mutation で実証)。廃止はしないが、M8 として時間の上限を検討 |
 | Rulesets の approvals を 1 にする | 単独メンテナでは admin bypass が常態化する(plan §8)。H5 の docs 明記で対応 |
 
 ## 3. 検証の設計: Exercise 13 を計測付きの実験にする
@@ -93,6 +94,6 @@ retro の申し送り「通常の feature で /intent を一周する」を、�
 3. Exercise 13(条件 A)を実施し、H1 のデータを 1 セット取る
 4. H3(軽量経路)。閾値は 3 のデータで決める
 5. Exercise 13(条件 B)を実施し、比較を書く
-6. M1〜M7 は 1〜5 の合間に、1 項目 1 intent で。M7 は計測の分母を汚すので H3 の閾値を決める(4)より前に入れる
+6. M1〜M8 は 1〜5 の合間に、1 項目 1 intent で。M7 は計測の分母を汚すので H3 の閾値を決める(4)より前に入れる
 
 各項目の変更は `.claude/**` `scripts/**` `policies/**` `.github/**` に及ぶため PR に理由を書く(AGENTS.md)。テンプレート同期は M1 が入るまで手動。
