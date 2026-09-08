@@ -36,6 +36,7 @@
 | 8 skill | 手順 | L2 | 支援 | 毎回手順を発明する。ゲートを飛ばす |
 | `plan-reviewer` | subagent | 助言 | 支援 | 計画の穴を人間だけが探す |
 | `verify.sh --only docs` | CI(`security.yml` infra job) | L7 | 強制 | ローカルで改竄された記録が merge される |
+| `intent.sh event` / `metrics`(Ph.10) | script(hook が呼ぶ) | 記録 | 支援(計測) | ハーネスが Agent を何回止めたか分からず、生産性の劣化に気づけない(`docs/improvement-plan.md` H1)。intent 外は `.claude/metrics.log`(ローカル専用) |
 
 支援と強制の境目: **支援は Agent が無視できる**(skill を読まない、rules を守らない)。強制は hook と CI だけ。
 Phase 9 で「指示 → hook」に変換したのは 2 つ(計画承認前の書込禁止、承認の受領証)。それ以外の手順は skill(支援)のまま。

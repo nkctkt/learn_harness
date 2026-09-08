@@ -11,6 +11,8 @@
 #   scripts/intent.sh note <Interpretations|Deviations|Tradeoffs|Open questions> "<text>"   memory.md に追記
 #   scripts/intent.sh close [--abandon]                                      intent を終える
 #   scripts/intent.sh human-turn <source>                                    hook 専用: 人間の在席を記録
+#   scripts/intent.sh event <EVENT> "<detail>"                               hook 専用: 判定(HOOK_DENY / HOOK_ASK / STOP_BLOCK / POST_EDIT_FAIL)を記録
+#   scripts/intent.sh metrics [--file <log>]                                 判定・在席・差し戻しの回数と経過秒(/retro が読む)
 #   scripts/intent.sh check                                                  全 intent の整合性検査(CI の docs 段)
 #
 # 設計:
@@ -19,11 +21,18 @@
 #     → 提示(GATE_PRESENTED)より後に HUMAN_TURN が無ければ承認できない。Agent が自分で承認を捏造する経路を塞ぐ。
 #   - state.md / audit.log への直接書込は guard-edit.sh が deny、Bash 経由は guard-bash.sh が ask にする。
 #   - ローカルの記録は改竄できる(全ローカル層と同じ)。check を CI で回して、改竄を PR で露見させる。
+#   - ハーネスの判定(deny / ask / Stop block)は hook が `event` で記録する(Phase 10、improvement-plan H1)。
+#     active な intent があれば audit.log、無ければ .claude/metrics.log(Git 追跡外、check の対象外。intent 外の摩擦を見るだけ)。
 #   - bash 3.2(macOS)で動く。jq / python に依存しない。
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 INTENTS_DIR="${INTENTS_DIR:-$ROOT/docs/intents}"
+METRICS_LOG="${HARNESS_METRICS_LOG:-$ROOT/.claude/metrics.log}"
 now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
+iso_to_epoch() {
+  # ISO-8601(UTC、秒精度)→ epoch 秒。GNU date(CI の ubuntu)を先に試し、BSD date(macOS)に落とす。
+  date -u -d "$1" +%s 2>/dev/null || date -u -j -f '%Y-%m-%dT%H:%M:%SZ' "$1" +%s 2>/dev/null
+}
 die() { echo "intent: $*" >&2; exit 1; }
 usage() { sed -n '2,15p' "$0"; exit 64; }
 
@@ -235,6 +244,35 @@ cmd_human_turn() {
   audit HUMAN_TURN "${1:-unknown}" "$dir"
 }
 
+# ---- event / metrics(ハーネスの判定を記録して数える)-------------------------------------------------
+cmd_event() {
+  local name="${1:-}" detail="${2:-}" dir
+  printf '%s' "$name" | grep -Eq '^[A-Z][A-Z_]+$' || die "event 名は大文字英字と _ のみ: '$name'"
+  [ -n "$detail" ] || die "detail が必要です: event $name \"<detail>\""
+  detail="$(printf '%s' "$detail" | tr '\t\n' '  ' | cut -c1-120)"
+  if dir="$(active_dir 2>/dev/null)"; then audit "$name" "$detail" "$dir"
+  else mkdir -p "$(dirname "$METRICS_LOG")" && printf '%s\t%s\t%s\n' "$(now)" "$name" "$detail" >> "$METRICS_LOG"; fi
+}
+cmd_metrics() {
+  local file="" dir
+  while [ $# -gt 0 ]; do case "$1" in --file) file="$2"; shift ;; *) die "unknown arg: $1" ;; esac; shift; done
+  if [ -z "$file" ]; then
+    if dir="$(active_dir 2>/dev/null)"; then file="$dir/audit.log"; else file="$METRICS_LOG"; fi
+  fi
+  [ -f "$file" ] || die "記録がありません: $file"
+  echo "source	$file"
+  local e; for e in HOOK_DENY HOOK_ASK STOP_BLOCK POST_EDIT_FAIL HUMAN_TURN GATE_REJECTED; do
+    printf '%s\t%s\n' "$e" "$(grep -c "	$e	" "$file" || true)"
+  done
+  # 経過時間: INTENT_CREATED → INTENT_CLOSED(無ければ現在)。intent 以外の記録なら先頭行 → 末尾行。
+  local t0 t1 s0 s1
+  t0="$(grep '	INTENT_CREATED	' "$file" | head -n1 | cut -f1)"; [ -n "$t0" ] || t0="$(head -n1 "$file" | cut -f1)"
+  t1="$(grep '	INTENT_CLOSED	' "$file" | tail -n1 | cut -f1)"
+  if [ -n "$t1" ]; then :; elif grep -q '	INTENT_CREATED	' "$file"; then t1="$(now)"; else t1="$(tail -n1 "$file" | cut -f1)"; fi
+  s0="$(iso_to_epoch "$t0")"; s1="$(iso_to_epoch "$t1")"
+  if [ -n "$s0" ] && [ -n "$s1" ]; then printf 'elapsed_sec\t%s\n' "$((s1 - s0))"; else echo "elapsed_sec	unknown (date parse failed)"; fi
+}
+
 # ---- check(CI)--------------------------------------------------------------------------------
 cmd_check() {
   local d rc=0 n=0
@@ -303,6 +341,8 @@ case "$cmd" in
   note) cmd_note "$@" ;;
   close) cmd_close "$@" ;;
   human-turn) cmd_human_turn "$@" ;;
+  event) cmd_event "$@" ;;
+  metrics) cmd_metrics "$@" ;;
   check) cmd_check ;;
   *) usage ;;
 esac

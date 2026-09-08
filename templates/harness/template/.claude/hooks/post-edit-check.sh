@@ -14,6 +14,8 @@ esac
 out="$("$root/scripts/verify.sh" --fix --files "$path" 2>&1)"
 status=$?
 if [ $status -ne 0 ]; then
+  # 失敗を記録する(Phase 10、improvement-plan H1)。失敗しても出力は変えない。
+  "$root/scripts/intent.sh" event POST_EDIT_FAIL "${path#"$root"/}" >/dev/null 2>&1 || true
   jq -n --arg m "$out" '{
     hookSpecificOutput: {
       hookEventName: "PostToolUse",

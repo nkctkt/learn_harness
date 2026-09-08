@@ -46,10 +46,11 @@ uv tool run copier update --trust
 5. **Rego の `package_json.rego` / `terraform.rego`** は汎用。`github_workflow.rego` も汎用。
 6. **GitHub**: `gh repo create` → push → `scripts/github/apply-rulesets.sh` → Settings で secret scanning と push protection を有効化(private では GHAS が要る)。Free プランの private リポジトリでは Rulesets 自体が使えない。
 7. **ローカルツール**: `brew install gitleaks semgrep trivy hadolint actionlint conftest`(+ `go golangci-lint`、`go install golang.org/x/vuln/cmd/govulncheck@latest`)。zizmor は `uv tool run zizmor`。
-8. **pnpm**: root の `package.json` に `"prepare": "lefthook install"`、`pnpm-workspace.yaml` に `saveExact` / `minimumReleaseAge: 10080` / `trustPolicy: no-downgrade` / `blockExoticSubdeps` / `allowBuilds`(`learn_harness/pnpm-workspace.yaml` を参照)。
-9. **Actions の SHA を更新する**: テンプレートの SHA は 2026-09 時点。Dependabot(actions)が週次で更新 PR を出す。bot PR は Code Owner の approve が要る。
-10. **release.yml** は `v*` タグで GHCR に push する。不要なら削除。使うなら最初のタグで `gh attestation verify` まで確認する。
-11. **最初の PR で意図的に壊す**: 型エラー、`any`、ダミー鍵、`^` 付き依存を入れて、hook → pre-commit → CI の順に止まることを確認してから本番のコードを書き始める(`learn_harness/docs/exercises/01`〜)。
+8. **`.gitignore`** に `.claude/metrics.log` を足す(intent 外のハーネス判定の記録。ローカル専用、`scripts/intent.sh metrics` が読む)。
+9. **pnpm**: root の `package.json` に `"prepare": "lefthook install"`、`pnpm-workspace.yaml` に `saveExact` / `minimumReleaseAge: 10080` / `trustPolicy: no-downgrade` / `blockExoticSubdeps` / `allowBuilds`(`learn_harness/pnpm-workspace.yaml` を参照)。
+10. **Actions の SHA を更新する**: テンプレートの SHA は 2026-09 時点。Dependabot(actions)が週次で更新 PR を出す。bot PR は Code Owner の approve が要る。
+11. **release.yml** は `v*` タグで GHCR に push する。不要なら削除。使うなら最初のタグで `gh attestation verify` まで確認する。
+12. **最初の PR で意図的に壊す**: 型エラー、`any`、ダミー鍵、`^` 付き依存を入れて、hook → pre-commit → CI の順に止まることを確認してから本番のコードを書き始める(`learn_harness/docs/exercises/01`〜)。
 
 ## 復旧手順(hook が全滅した時)
 

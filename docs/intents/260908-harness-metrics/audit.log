@@ -23,3 +23,6 @@
 2026-09-08T01:57:31Z	HOOK_ASK	guard-edit: ハーネス自体を変更しようとしています(HITL-4): .claude/hooks/stop-verify.sh。意図した変更か確認してください。
 2026-09-08T01:58:03Z	HOOK_ASK	guard-bash: ハーネス自体(hooks / CI / policies / lefthook)を Bash で書き換えようとしています。意図した変更か確認してください。
 2026-09-08T01:58:19Z	HOOK_ASK	guard-bash: intent の受領証・状態・監査ログを直接操作しようとしています。承認は人間の応答(hook が記録)でのみ成立します。意図した操作か確認してください。
+2026-09-08T02:00:02Z	UNIT_DONE	u2-hook-wiring
+2026-09-08T02:00:02Z	UNIT_STARTED	u3-retro-and-templates
+2026-09-08T02:00:32Z	HOOK_ASK	guard-bash: ハーネス自体(hooks / CI / policies / lefthook)を Bash で書き換えようとしています。意図した変更か確認してください。
