@@ -239,7 +239,7 @@ Phase 1〜4 が本質。ここまでで 7 割の価値が出る。
 - guard-bash は文字列リテラル内の hook 回避フラグにも反応する(既知の誤検知)。hook のテストケースはファイルに置く。
 - **承認の受領証(HUMAN_TURN)はローカル層**(Phase 9)。Agent が `intent.sh human-turn` を呼べば捏造できる(guard-bash は ask にするが deny ではない)。`audit.log` を Bash 以外(他ツール、人間)で書けば検出できない。CI の `intent.sh check` は順序の整合しか見ない。最後の防衛線は PR レビューで `docs/intents/` の diff を読むこと。
 - **guard-plan-approval は Edit/Write のパスしか見ない**。Bash の heredoc / `sed -i` は guard-bash §7 が同じ条件で deny するが、`python3 -c` や `tee` 以外のコマンドで書く経路は素通りする。Stop hook の verify は通るので、検出は PR の diff と `docs/intents/` の対応で行う。
-- **新しい subagent / skill はセッション開始時にしか読み込まれない**(Phase 9 で plan-reviewer を作った直後に呼べなかった)。作ったら再起動するか、general-purpose agent に定義ファイルを読ませて代用する。
+- **新しい subagent は作成直後には Agent tool で呼べない**(Phase 9 で plan-reviewer を作った直後は "not found"。数十分後に認識された)。skill は即時。待てない時は general-purpose agent に定義ファイルを読ませて代用する。
 - **active な intent が残っていると、無関係な小修正でも apps/ への書込が deny される**。intent は close するか、`--abandon` で放棄する。SessionStart が状態を出すので気づける。
 
 ## 11. 環境メモ(2026-09-05 時点)

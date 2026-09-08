@@ -47,6 +47,7 @@ Phase 9 で「指示 → hook」に変換したのは 2 つ(計画承認前の�
 - 入力: 人間の依頼。出力: `intent.md`(目的 / スコープ外 / 受け入れ条件 / リスクと HITL)。
 - 受け入れ条件は「テスト名か verify の段で言える」文にする。ここが曖昧だと DoD も曖昧になり、Stop hook は通るのに意図と違うものができる。
 - HITL レベルはここで決める。`.github .claude policies infra` と依存追加は 4。
+- **intent は作業の前に作る。** 「作ってから intent を書く」は計画が出力になる経路そのもので、guard-plan-approval が守ろうとしているものを手で回避することになる。事後に作ったのは Phase 9 のブートストラップ(hook 自体を作る作業)だけ。
 
 ### Inception — `/plan-units`、`/adr`、`plan-reviewer`
 
