@@ -16,11 +16,11 @@
     "contracts:check": "tsx scripts/export-contracts.ts --check"
   },
   "dependencies": {
-    "@hono/node-server": "2.1.1",
-    "drizzle-orm": "0.45.2",
-    "hono": "4.13.5",
+    "@hono/node-server": "2.1.3",
+    "drizzle-orm": "0.45.3",
+    "hono": "4.13.13",
     "postgres": "3.4.9",
-    "zod": "4.5.4"
+    "zod": "4.6.5"
   },
   "devDependencies": {
     "@stryker-mutator/core": "10.0.0",
