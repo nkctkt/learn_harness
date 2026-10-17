@@ -6,7 +6,7 @@ COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv uv sync --locked --no-dev --no-install-project
 COPY enricher ./enricher
 
-FROM python:3.13-slim-bookworm AS runtime
+FROM python:3.14-slim-bookworm AS runtime
 WORKDIR /app
 # 実行時に不要な pip / setuptools を外す(ベース image 同梱の setuptools に HIGH CVE。Exercise 06)。
 # アプリの依存は uv が .venv に入れており、システムの pip には依存しない。
