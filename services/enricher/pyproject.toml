@@ -4,22 +4,22 @@ version = "0.1.0"
 description = "Reading Shelf: URL metadata enrichment service"
 requires-python = ">=3.13"
 dependencies = [
-    "fastapi>=0.141.1",
+    "fastapi>=0.162.0",
     "httpx>=0.28.1",
     "uvicorn[standard]>=0.52.4",
 ]
 
 [dependency-groups]
 dev = [
-    "basedpyright>=1.39.10",
+    "basedpyright>=1.40.2",
     "import-linter>=2.15",
     "jsonschema>=4.26.0",
-    "mutmut>=3.7.0",
+    "mutmut>=3.8.0",
     "pytest>=9.1.1",
-    "pytest-asyncio>=1.4.0",
+    "pytest-asyncio>=1.4.1",
     "pytest-cov>=7.1.0",
     "respx>=0.23.1",
-    "ruff>=0.16.6",
+    "ruff>=0.17.2",
 ]
 
 [tool.ruff]
